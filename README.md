@@ -89,7 +89,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     root@mtcdt:~#
     ```
 
-At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we're about to change all that.
+   At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we're about to change all that.
 
 6. Check the mLinux version:
     ```shell
@@ -224,18 +224,27 @@ For the purposes of this discussion, we'll assume the following directory struct
                 group_vars/
                     conduits.yml
                 host_vars/
-                    {host1}.yml
-                    {host2}.yml
+                    ttn-{host1}.yml
+                    ttn-{host2}.yml
+                    {jumphost1}.yml
                     ...
         ttn-multitech-cm/
             .git/
             Makefile
             ...
 
+## hosts
+MORE TO COME HERE
 
+## host_vars/ttn-\{hostXX\}.yml
+This directory contains information about each of the gateways, one file per gateway. 
 
-## `group_vars/conduits.yaml`
+To be treated as a gateway description and acted upon, a given file, `ttn-{hostXX}` must appear in the `hosts` file under a `[Conduits]` section (typically in a subsection). Otherwise the file is ignored.
 
+In the `ttn-multitech-cm/host_vars/` directory, you can find a sample file, `ttn-org-example.yml`, which can be used as a starting point. Make a copy in your organization's host_vars directory with the appropriate name to match the name used in your `hosts` file.
 
+## group_vars/conduits.yml
 
-At present, some material has to be replicated in the groups table.
+This file contains information about all Conduits.
+
+MORE TO COME HERE.
