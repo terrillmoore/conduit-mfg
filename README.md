@@ -1,4 +1,4 @@
-# MCCI's instructions for preparing a Conduit for shipping to customers
+# Manufacturer's instructions for preparing a Conduit for shipping to customers
 
 # Setting up the Conduit
 
@@ -214,37 +214,73 @@ When setting up an organization, the ops team can choose one of two approaches. 
 
 No matter what approach the ops team chooses, each organization directory will have a `hosts` file, a `host_vars` directory with one file for each managed Conduit, and a `group_vars` directory containing at least the file `group_vars/conduits.yaml`.  These are documented below.
 
+## Organizational Information
+
 For the purposes of this discussion, we'll assume the following directory structure.
 
-    {toplevel}
-        org/
-            {orgname}/
-                .gitignore
-                hosts
-                group_vars/
-                    conduits.yml
-                host_vars/
-                    ttn-{host1}.yml
-                    ttn-{host2}.yml
-                    {jumphost1}.yml
-                    ...
-        ttn-multitech-cm/
-            .git/
-            Makefile
+<pre><em><strong>toplevel</strong></em>
+    .git/
+    .gitignore
+    org/
+        hosts
+        group_vars/
+            conduits.yml
+        host_vars/
+            ttn-<em><strong>host1</strong></em>.yml
+            ttn-<em><strong>host2</strong></em>.yml
             ...
+            <em><strong>jumphost1</strong></em>.yml
+            ...
+    ttn-multitech-cm/
+        .git/
+        Makefile
+        ...</pre>
 
-## hosts
-MORE TO COME HERE
+Note that `ttn-multitech-cm/` is a git [_**submodule**_](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
 
-## host_vars/ttn-\{hostXX\}.yml
-This directory contains information about each of the gateways, one file per gateway. 
+## The <code>org/</code> directory
+This is an Ansible [_**inventory directory**_](http://docs.ansible.com/ansible/latest/intro_dynamic_inventory.html#using-inventory-directories-and-multiple-inventory-sources). As such, you need to be careful to only put the `hosts` file here; all files are liable to interpretation by Ansible. We note in passing that it is possible to specify the group hierarchy separately in a `groups` or `groups.yml` file, and then 
+## The <code>hosts</code> file
+The `hosts` file is an Ansible [_**inventory**_](http://docs.ansible.com/ansible/latest/intro_inventory.html) file. It provides the following information:
+- the names we'll use to refer to each of the known systems (_**hosts**_) that are to be controlled by Ansible; and
+- the _**groups**_ to which hosts belong.
 
+A host always belongs to at least two groups, <code>[all]</code>, which conains all hosts, and some more specific group. Hosts that appear before the first header will be placed in the `[ungrouped]` group.
+
+Hosts have associated _**variables**_. These are values associated with the host, which can be queried by Ansible components. This allows for host-by-host parameterization.
+
+In our context, each gateway that we want to control is defined as a host in the inventory.
+
+Hosts are normally (but not always) given names that correspond to their DNS names. Since our gateways often will not be visible in DNS, the names we assign to our gateway hosts are not DNS names. The names conventionally follow the pattern <code>ttn-<em>orgtag</em>-<em>gatewayname</em></code>, where <code><em>orgtag</em></code> is the same for all the gateways in the organization. 
+
+The `hosts` inventory file is usually structured like a Windows `.ini` file.
+- Lines of the form `[something]` are headers
+- Other lines are content related to the header
+
+Header lines come in three forms: 
+- Lines of the form <code>[<em>groupname</em>]</code> start a section of host names. Each host named in the sectio belongs to the specfied group (and to all the groups that are parents of the specified group).
+- Lines of the form <code>[<em>groupname</em>:vars]</code> start a section of variable settings that are to be defined for every host that's part of group <code><em>groupname</em></code>.
+- Lines of the form <code>[<em>groupname</em>:children]</code> start a section of sub-group names, one name per line. Each group named in the section belongs to the parent group <code>[<em>groupname</em>]</code>.
+
+Groups are used in two ways:
+- they define specific subsets of the hosts in the inventory; and
+- they provide specific variable values that are associated with each host in the group.
+
+Although it is technically possible to put host and group variable settings in the inventory file, standard practice is to put the settings for a given host in a separate file. This file is a YAML file, and it lives in the `host_vars` directory next to the `hosts` inventory file, and is named <code><em><strong>hostname</strong></em>.yml</code>.
+
+## host_vars/
+This directory contains information (in the form of variable settings) about each of the gateways, one file per gateway. For convenience, information about the jump hosts is also placed in this directory, one file per jump host.
+
+### host_vars/ttn-\{hostXX\}.yml
 To be treated as a gateway description and acted upon, a given file, `ttn-{hostXX}` must appear in the `hosts` file under a `[Conduits]` section (typically in a subsection). Otherwise the file is ignored.
 
-In the `ttn-multitech-cm/host_vars/` directory, you can find a sample file, `ttn-org-example.yml`, which can be used as a starting point. Make a copy in your organization's host_vars directory with the appropriate name to match the name used in your `hosts` file.
+In the `ttn-multitech-cm/host_vars/` directory, you can find a sample file, `ttn-org-example.yml`, which can be used as a starting point. Make a copy in your organization's `host_vars` directory with the appropriate name to match the name used in your `hosts` file.
 
-## group_vars/conduits.yml
+## group_vars/
+This directory contains information (in the form of variable settings) about each of the groups, one file per group. The file for group <code>[<em>groupname</em>]</code> is named <code>group_vars/<em>groupname</em>.yml</code>.
 
-This file contains information about all Conduits.
+### group_vars/conduits.yml
 
-MORE TO COME HERE.
+This file contains information (again, in the form of variable settings) that apply to all gateways that are in the `[conduits]` group in the inventory. 
+
+
