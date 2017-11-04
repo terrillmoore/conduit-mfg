@@ -1,0 +1,32 @@
+@startuml
+' PlantUML image for the operating setup. See www.plantuml.com
+
+node Jumphost
+node PC [
+Provisioning PC
+]
+node Conduit [
+Conduit
+]
+database OrgData [
+Organization data
+---
+git repo
+---
+inventory
+host_vars/
+group_vars/
+]
+database Ansible [
+Ansible procedures
+---
+git submodule
+ttn-multitech-cm
+]
+
+Jumphost <.. Conduit
+PC ..> Jumphost
+PC ~~> Conduit
+PC -- OrgData
+OrgData -- Ansible
+@enduml
