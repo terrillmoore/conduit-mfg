@@ -200,7 +200,7 @@ The obvious way to separate the data is to create a directory for the organizati
 
 So the ops team at MCCI puts the data for each organization in a separate directory, corresponding to a separate Git repository. 
 
-We also need one or more _**jump hosts**_.  Jump hosts are intermediate systems that serve as a known place for contacting gateways that are otherwise not directly accessible on the internet. The gateway connects to the jump host; management clients connect to the jump host; software on the jump host sets up tunnels so that the clients think they're talking directly to the gateways.
+We also need one or more _**jump hosts**_.  Jump hosts are intermediate systems that serve as a known place for contacting gateways that are otherwise not directly accessible on the internet. (Ansible documentation refers to these as _**bastion hosts**_, but that concept is more general.) The gateway connects to the jump host; management clients connect to the jump host; software on the jump host sets up tunnels so that the clients think they're talking directly to the gateways.
 
 Some organizations will want to set up their own jump hosts. But there is not necessarily a one-to-one mapping between organizations and jump hosts; and we think that there will (long term) be many more jump hosts than clients.
 
@@ -284,3 +284,37 @@ This directory contains information (in the form of variable settings) about eac
 This file contains information (again, in the form of variable settings) that apply to all gateways that are in the `[conduits]` group in the inventory. 
 
 
+# How Provisioning Works
+
+1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
+2. The ops team assigns an initial jumphost port number for this Conduit, and records the jumphost port <=> Conduit mapping. At MCCI, we identify the Conduit by Ethernet MAC address.
+3. The provisioning system is set up like this:
+
+   ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
+
+4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
+   1. Install the starting point for Ansible
+
+5. Either manually, or using Ansible, the following steps are performed. To do using Ansible, a new `provision.yml` is needed, and the inventory has to be a special provisioning inventory.
+
+   1. Generate a private key to be used for autossh key, and fetch the public key to be stored in the database for the Conduit.
+   2. Establishes an autossh to the initial jumphost using the assigned port number.
+   3. Installs an initial authorized_keys file for root login using the ops team key.
+   4. Disables password-based login for root via ssh.
+
+5. The provisioning PC installs the public key for the new Conduit on the jumphost.
+
+6. The provisioning PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
+
+7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then 
+   1. assigns the Conduit a new address
+   2. Sets up the initail authorized key file for use during the rest of the provisioning process
+   3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
+
+8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:
+
+   ![Live Model](http://www.plantuml.com/plantuml/png/JO_1JiGm34Jl_WhVE2Ny05e9bHC2KMd52I6KjgQDrCHHucm5X_rsNBQ5lSradB7V3RQpY_Bw_8G-k97mapFAHCY9iXCVHomaDLay4k6oB3QjypNCjkS047aWVAmXJLpauje6tw3DVFB5SrmRsWRUBrd3SQXUT61J6WnENESAuKiU7rHhgCf5_wtxEUAQWp46HlsOAV6lyV54KJX_mRhvu-HokOKnSqsRlYg-ZyLtCsdnhbBcdeQQgVmrbze57kfC819DgBDueNuoVT0gs17npjgT0fJKsiC_llhp-N0T6xDJmKwdJziLFm00)
+
+   For clarity, we show the databases on the Provisioning PC in this diagram.
+
+   Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
