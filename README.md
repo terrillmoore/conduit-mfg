@@ -288,8 +288,7 @@ This file contains information (again, in the form of variable settings) that ap
 
 1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
 2. The ops team assigns an initial jumphost port number for this Conduit, and records the jumphost port <=> Conduit mapping. At MCCI, we identify the Conduit by Ethernet MAC address.
-3. The provisioning system is set up like this:
-
+3. The provisioning system is set up like this:  
    ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
 4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
    1. Install the starting point for Ansible
@@ -310,8 +309,7 @@ This file contains information (again, in the form of variable settings) that ap
    2. Sets up the initail authorized key file for use during the rest of the provisioning process
    3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
 
-8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:
-
+8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:  
    ![Live Model](http://www.plantuml.com/plantuml/png/JO_1JiGm34Jl_WhVE2Ny05e9bHC2KMd52I6KjgQDrCHHucm5X_rsNBQ5lSradB7V3RQpY_Bw_8G-k97mapFAHCY9iXCVHomaDLay4k6oB3QjypNCjkS047aWVAmXJLpauje6tw3DVFB5SrmRsWRUBrd3SQXUT61J6WnENESAuKiU7rHhgCf5_wtxEUAQWp46HlsOAV6lyV54KJX_mRhvu-HokOKnSqsRlYg-ZyLtCsdnhbBcdeQQgVmrbze57kfC819DgBDueNuoVT0gs17npjgT0fJKsiC_llhp-N0T6xDJmKwdJziLFm00)
 
    For clarity, we show the databases on the Provisioning PC in this diagram.
