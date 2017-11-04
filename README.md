@@ -291,7 +291,6 @@ This file contains information (again, in the form of variable settings) that ap
 3. The provisioning system is set up like this:
 
    ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
-
 4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
    1. Install the starting point for Ansible
 
