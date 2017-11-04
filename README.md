@@ -1,25 +1,175 @@
 # Manufacturer's instructions for preparing a Conduit for shipping to customers
 
-# Setting up the Conduit
+This document summarizes the theory and practice of managing Conduits (and other gateways for The Things Network) using the Ansible framework developed by Jeff Honig.
 
-If the Conduit is not an mLinux variant (is an AEP variant), then you must
-re-flash the Conduit with an mLinux version.
+To jump to the sections, use these links:
+- [Theory](#Theory)
+- [Practice](#Practice)
 
-## Reflashing the Conduit
-TO BE SUPPLIED -- NOT NORMALLY REQUIRED
+# Theory
 
-## Resetting to Factory Defaults
-Reset the Conduit to factory defaults by powering on, then pressing and holding
-the front-panel RESET button for 5 seconds.  Let the Conduit complete its 
-reboot and reinitialization sequence.
+## Background
 
-# Setting up your Manufacturing Control System
-This procedure requires that you have a VM with:
-- Ubuntu-64 16.04LTS
-- Ansible
-- The other pre-requisites from https://github.com/IthacaThings/ttn-multitech-cm
+This Ansible system manages _**gateways**_.
 
-## Ansible setup
+Gateways are associated with _**organizations**_. The gateways for an organization are managed by an _**ops team**_.  One ops team may manage gateways for several organizations.
+
+This document is intended for use by MCCI in its role as an ops team.
+
+The data about gateways and organizations must not be shared indiscriminately. On the other hand, the scripts and procedures for configuration management are intended to be shared (both for code reuse, and for review).
+
+So the ops team must separate the gateway and organization data from the procedures.
+
+For example, at MCCI we now are managing:
+
+- MCCI's gateways in Ithaca and New York
+- Lancaster's gateways in California
+- The Things Network Ithaca's gateways
+- The Things Network New York's gateways
+- The Hualian Garden gateway
+
+The obvious way to separate the data is to create a directory for the organization that is separate from the data for the procedure.
+
+So the ops team at MCCI puts the data for each organization in a separate directory, corresponding to a separate Git repository. 
+
+We also need one or more _**jump hosts**_.  Jump hosts are intermediate systems that serve as a known place for contacting gateways that are otherwise not directly accessible on the internet. (Ansible documentation refers to these as _**bastion hosts**_, but that concept is more general.) The gateway connects to the jump host; management clients connect to the jump host; software on the jump host sets up tunnels so that the clients think they're talking directly to the gateways.
+
+Some organizations will want to set up their own jump hosts. But there is not necessarily a one-to-one mapping between organizations and jump hosts; and we think that there will (long term) be many more jump hosts than clients.
+
+Awkwardly, a given jump host must (for technical reasons) assign unique _**forwarding ports**_ for each gateway. These ports are 16-bit numbers. There must be a table for each jump host that specifies the correspondence between forwarding port number and the associated gateway.
+
+## Approach 
+
+It may well be that we discover that what's needed is a database for the information (something stronger than `git`). But for now, we'll use `git` for storing the info, even though this probably will cause regrettable duplication of data.
+
+When setting up an organization, the ops team can choose one of two approaches. They can have a master organization repository that includes the `ttn-multitech-cm` system as a submodule. Alternately, they can have the organization repository sit side-by-side with a separate (independent) clone of the `ttn-multitech-cm` repository. In that case, the computer system hosting the Ansible system would only need one copy; but it becomes very difficult to replicate results and track versions if there are multiple operators with laptops.  The problem with submodules is complexity -- they're not at all transparent, which makes them errorprone and somewhat tedious to use.
+
+No matter what approach the ops team chooses, each organization directory will have a `hosts` file, a `host_vars` directory with one file for each managed Conduit, and a `group_vars` directory containing at least the file `group_vars/conduits.yaml`.  These are documented below.
+
+## Organizational Information
+
+For the purposes of this discussion, we'll assume the following directory structure.
+
+<pre><em><strong>toplevel</strong></em>
+    .git/
+    .gitignore
+    org/
+        hosts
+        group_vars/
+            conduits.yml
+        host_vars/
+            ttn-<em><strong>host1</strong></em>.yml
+            ttn-<em><strong>host2</strong></em>.yml
+            ...
+            <em><strong>jumphost1</strong></em>.yml
+            ...
+    ttn-multitech-cm/
+        .git/
+        Makefile
+        ...</pre>
+
+Note that `ttn-multitech-cm/` is a git [_**submodule**_](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
+
+### The <code>org/</code> directory
+This is an Ansible [_**inventory directory**_](http://docs.ansible.com/ansible/latest/intro_dynamic_inventory.html#using-inventory-directories-and-multiple-inventory-sources). As such, you need to be careful to only put the `hosts` file here; all files are liable to interpretation by Ansible. We note in passing that it is possible to specify the group hierarchy separately in a `groups` or `groups.yml` file, and then 
+### The <code>hosts</code> file
+The `hosts` file is an Ansible [_**inventory**_](http://docs.ansible.com/ansible/latest/intro_inventory.html) file. It provides the following information:
+- the names we'll use to refer to each of the known systems (_**hosts**_) that are to be controlled by Ansible; and
+- the _**groups**_ to which hosts belong.
+
+A host always belongs to at least two groups, <code>[all]</code>, which conains all hosts, and some more specific group. Hosts that appear before the first header will be placed in the `[ungrouped]` group.
+
+Hosts have associated _**variables**_. These are values associated with the host, which can be queried by Ansible components. This allows for host-by-host parameterization.
+
+In our context, each gateway that we want to control is defined as a host in the inventory.
+
+Hosts are normally (but not always) given names that correspond to their DNS names. Since our gateways often will not be visible in DNS, the names we assign to our gateway hosts are not DNS names. The names conventionally follow the pattern <code>ttn-<em>orgtag</em>-<em>gatewayname</em></code>, where <code><em>orgtag</em></code> is the same for all the gateways in the organization. 
+
+The `hosts` inventory file is usually structured like a Windows `.ini` file.
+- Lines of the form `[something]` are headers
+- Other lines are content related to the header
+
+Header lines come in three forms: 
+- Lines of the form <code>[<em>groupname</em>]</code> start a section of host names. Each host named in the sectio belongs to the specfied group (and to all the groups that are parents of the specified group).
+- Lines of the form <code>[<em>groupname</em>:vars]</code> start a section of variable settings that are to be defined for every host that's part of group <code><em>groupname</em></code>.
+- Lines of the form <code>[<em>groupname</em>:children]</code> start a section of sub-group names, one name per line. Each group named in the section belongs to the parent group <code>[<em>groupname</em>]</code>.
+
+Groups are used in two ways:
+- they define specific subsets of the hosts in the inventory; and
+- they provide specific variable values that are associated with each host in the group.
+
+Although it is technically possible to put host and group variable settings in the inventory file, standard practice is to put the settings for a given host in a separate file. This file is a YAML file, and it lives in the `host_vars` directory next to the `hosts` inventory file, and is named <code><em><strong>hostname</strong></em>.yml</code>.
+
+### host_vars/
+This directory contains information (in the form of variable settings) about each of the gateways, one file per gateway. For convenience, information about the jump hosts is also placed in this directory, one file per jump host.
+
+#### host_vars/ttn-\{hostXX\}.yml
+To be treated as a gateway description and acted upon, a given file, `ttn-{hostXX}` must appear in the `hosts` file under a `[Conduits]` section (typically in a subsection). Otherwise the file is ignored.
+
+In the `ttn-multitech-cm/host_vars/` directory, you can find a sample file, `ttn-org-example.yml`, which can be used as a starting point. Make a copy in your organization's `host_vars` directory with the appropriate name to match the name used in your `hosts` file.
+
+### group_vars/
+This directory contains information (in the form of variable settings) about each of the groups, one file per group. The file for group <code>[<em>groupname</em>]</code> is named <code>group_vars/<em>groupname</em>.yml</code>.
+
+#### group_vars/conduits.yml
+
+This file contains information (again, in the form of variable settings) that apply to all gateways that are in the `[conduits]` group in the inventory. 
+
+
+## How Provisioning Works
+
+1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
+2. The ops team assigns an initial jumphost port number for this Conduit, and records the jumphost port <=> Conduit mapping. At MCCI, we identify the Conduit by Ethernet MAC address.
+3. <a name="Provisioning-Setup-item"></a>The provisioning system is set up like this:  
+   ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
+4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
+   1. Install the starting point for Ansible
+
+5. Either manually, or using Ansible, the following steps are performed. To do using Ansible, a new `provision.yml` is needed, and the inventory has to be a special provisioning inventory.
+
+   1. Generate a private key to be used for autossh key, and fetch the public key to be stored in the database for the Conduit.
+   2. Establishes an autossh to the initial jumphost using the assigned port number.
+   3. Installs an initial authorized_keys file for root login using the ops team key.
+   4. Disables password-based login for root via ssh.
+
+5. The provisioning PC installs the public key for the new Conduit on the jumphost.
+
+6. The provisioning PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
+
+7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then 
+   1. assigns the Conduit a new address
+   2. Sets up the initail authorized key file for use during the rest of the provisioning process
+   3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
+
+8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:  
+   ![Live Model](http://www.plantuml.com/plantuml/png/JO_1JiGm34Jl_WhVE2Ny05e9bHC2KMd52I6KjgQDrCHHucm5X_rsNBQ5lSradB7V3RQpY_Bw_8G-k97mapFAHCY9iXCVHomaDLay4k6oB3QjypNCjkS047aWVAmXJLpauje6tw3DVFB5SrmRsWRUBrd3SQXUT61J6WnENESAuKiU7rHhgCf5_wtxEUAQWp46HlsOAV6lyV54KJX_mRhvu-HokOKnSqsRlYg-ZyLtCsdnhbBcdeQQgVmrbze57kfC819DgBDueNuoVT0gs17npjgT0fJKsiC_llhp-N0T6xDJmKwdJziLFm00)  
+    For clarity, we show the databases on the Provisioning PC in this diagram.
+
+    Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
+
+# Practice
+
+This section gives procedures for setting up a Conduit, assuming the theory outlined [above](#Theory).
+
+## Setting up your manufacturing station
+This procedure requires the following setup. (See [the figure](#Provisioning-Setup-item) in the Theory section, above.)
+1. A router connected to the internet. It must be set up for NAT, and the downstream network must be set for `192.168.2.0/24`. Its address on the network should be `192.168.2.254`. It should be provisioned to offer DHCP to downstream devices. The recommended downstream setup is to set aside a pool starting at `192.168.2.128`. 
+2. A Ubuntu system or VM with:
+    - Ubuntu-64 16.04LTS
+    - Ansible
+    - The other pre-requisites from https://github.com/IthacaThings/ttn-multitech-cm
+    - Your organizational repo.
+
+    This system needs to be conected to a downstream port of the above router. It must have an address other than `192.168.2.1`! 
+
+    Follow the procedure given in [Ansible setup](#ansible-setup) to confirm that your Ansible installation is ready to go.
+3. A spare Conduit accessory kit (power supply, Ethernet cable, RP-SMA LoRaWAN antenna).
+
+    **NOTE**: the Conduit accessory kit is not strictly required; but using a separate accessory kit means that you won't have to open up the end-user's accessory kit.
+
+### Checking out your organizational repo
+
+### Ansible setup
 You need to have a relatively recent verion.
 Follow [the instructions](http://docs.ansible.com/ansible/latest/intro_installation.html#latest-releases-via-apt-ubuntu)
 to get things set up properly.
@@ -39,7 +189,21 @@ When things are working, `make syntax-check` should work, more or less (with som
 
 TODO: have a simpler setup.
 
-# Setting up Conduit for Ansible
+## Preparing the Conduit
+
+If the Conduit is not an mLinux variant (is an AEP variant), then you must
+re-flash the Conduit with an mLinux version.
+
+### Reflashing the Conduit
+TO BE SUPPLIED -- NOT NORMALLY REQUIRED
+
+### Resetting the Conduit to Factory Defaults
+Reset the Conduit to factory defaults by powering on, then pressing and holding
+the front-panel RESET button for 5 seconds.  Let the Conduit complete its 
+reboot and reinitialization sequence.
+
+
+## Setting up Conduit for Ansible
 
 From the [factory](http://www.multitech.net/developer/software/mlinux/getting-started-with-conduit-mlinux/), 
 the Conduit's initial IP address is `192.168.2.1`. 
@@ -174,144 +338,3 @@ Return to the Ubuntu PC, and connect via Ethernet
 
 Now that we have the Conduit set up, our next step is to set up the configuration.
 
-# Dealing with Organizations
-
-## Background
-
-This Ansible system manages _**gateways**_.
-
-Gateways are associated with _**organizations**_. The gateways for an organization are managed by an _**ops team**_.  One ops team may manage gateways for several organizations.
-
-This document is intended for use by MCCI in its role as an ops team.
-
-The data about gateways and organizations must not be shared indiscriminately. On the other hand, the scripts and procedures for configuration management are intended to be shared (both for code reuse, and for review).
-
-So the ops team must separate the gateway and organization data from the procedures.
-
-For example, at MCCI we now are managing:
-
-- MCCI's gateways in Ithaca and New York
-- Lancaster's gateways in California
-- The Things Network Ithaca's gateways
-- The Things Network New York's gateways
-- The Hualian Garden gateway
-
-The obvious way to separate the data is to create a directory for the organization that is separate from the data for the procedure.
-
-So the ops team at MCCI puts the data for each organization in a separate directory, corresponding to a separate Git repository. 
-
-We also need one or more _**jump hosts**_.  Jump hosts are intermediate systems that serve as a known place for contacting gateways that are otherwise not directly accessible on the internet. (Ansible documentation refers to these as _**bastion hosts**_, but that concept is more general.) The gateway connects to the jump host; management clients connect to the jump host; software on the jump host sets up tunnels so that the clients think they're talking directly to the gateways.
-
-Some organizations will want to set up their own jump hosts. But there is not necessarily a one-to-one mapping between organizations and jump hosts; and we think that there will (long term) be many more jump hosts than clients.
-
-Awkwardly, a given jump host must (for technical reasons) assign unique _**forwarding ports**_ for each gateway. These ports are 16-bit numbers. There must be a table for each jump host that specifies the correspondence between forwarding port number and the associated gateway.
-
-## Approach 
-
-It may well be that we discover that what's needed is a database for the information (something stronger than `git`). But for now, we'll use `git` for storing the info, even though this probably will cause regrettable duplication of data.
-
-When setting up an organization, the ops team can choose one of two approaches. They can have a master organization repository that includes the `ttn-multitech-cm` system as a submodule. Alternately, they can have the organization repository sit side-by-side with a separate (independent) clone of the `ttn-multitech-cm` repository. In that case, the computer system hosting the Ansible system would only need one copy; but it becomes very difficult to replicate results and track versions if there are multiple operators with laptops.  The problem with submodules is complexity -- they're not at all transparent, which makes them errorprone and somewhat tedious to use.
-
-No matter what approach the ops team chooses, each organization directory will have a `hosts` file, a `host_vars` directory with one file for each managed Conduit, and a `group_vars` directory containing at least the file `group_vars/conduits.yaml`.  These are documented below.
-
-## Organizational Information
-
-For the purposes of this discussion, we'll assume the following directory structure.
-
-<pre><em><strong>toplevel</strong></em>
-    .git/
-    .gitignore
-    org/
-        hosts
-        group_vars/
-            conduits.yml
-        host_vars/
-            ttn-<em><strong>host1</strong></em>.yml
-            ttn-<em><strong>host2</strong></em>.yml
-            ...
-            <em><strong>jumphost1</strong></em>.yml
-            ...
-    ttn-multitech-cm/
-        .git/
-        Makefile
-        ...</pre>
-
-Note that `ttn-multitech-cm/` is a git [_**submodule**_](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
-
-## The <code>org/</code> directory
-This is an Ansible [_**inventory directory**_](http://docs.ansible.com/ansible/latest/intro_dynamic_inventory.html#using-inventory-directories-and-multiple-inventory-sources). As such, you need to be careful to only put the `hosts` file here; all files are liable to interpretation by Ansible. We note in passing that it is possible to specify the group hierarchy separately in a `groups` or `groups.yml` file, and then 
-## The <code>hosts</code> file
-The `hosts` file is an Ansible [_**inventory**_](http://docs.ansible.com/ansible/latest/intro_inventory.html) file. It provides the following information:
-- the names we'll use to refer to each of the known systems (_**hosts**_) that are to be controlled by Ansible; and
-- the _**groups**_ to which hosts belong.
-
-A host always belongs to at least two groups, <code>[all]</code>, which conains all hosts, and some more specific group. Hosts that appear before the first header will be placed in the `[ungrouped]` group.
-
-Hosts have associated _**variables**_. These are values associated with the host, which can be queried by Ansible components. This allows for host-by-host parameterization.
-
-In our context, each gateway that we want to control is defined as a host in the inventory.
-
-Hosts are normally (but not always) given names that correspond to their DNS names. Since our gateways often will not be visible in DNS, the names we assign to our gateway hosts are not DNS names. The names conventionally follow the pattern <code>ttn-<em>orgtag</em>-<em>gatewayname</em></code>, where <code><em>orgtag</em></code> is the same for all the gateways in the organization. 
-
-The `hosts` inventory file is usually structured like a Windows `.ini` file.
-- Lines of the form `[something]` are headers
-- Other lines are content related to the header
-
-Header lines come in three forms: 
-- Lines of the form <code>[<em>groupname</em>]</code> start a section of host names. Each host named in the sectio belongs to the specfied group (and to all the groups that are parents of the specified group).
-- Lines of the form <code>[<em>groupname</em>:vars]</code> start a section of variable settings that are to be defined for every host that's part of group <code><em>groupname</em></code>.
-- Lines of the form <code>[<em>groupname</em>:children]</code> start a section of sub-group names, one name per line. Each group named in the section belongs to the parent group <code>[<em>groupname</em>]</code>.
-
-Groups are used in two ways:
-- they define specific subsets of the hosts in the inventory; and
-- they provide specific variable values that are associated with each host in the group.
-
-Although it is technically possible to put host and group variable settings in the inventory file, standard practice is to put the settings for a given host in a separate file. This file is a YAML file, and it lives in the `host_vars` directory next to the `hosts` inventory file, and is named <code><em><strong>hostname</strong></em>.yml</code>.
-
-## host_vars/
-This directory contains information (in the form of variable settings) about each of the gateways, one file per gateway. For convenience, information about the jump hosts is also placed in this directory, one file per jump host.
-
-### host_vars/ttn-\{hostXX\}.yml
-To be treated as a gateway description and acted upon, a given file, `ttn-{hostXX}` must appear in the `hosts` file under a `[Conduits]` section (typically in a subsection). Otherwise the file is ignored.
-
-In the `ttn-multitech-cm/host_vars/` directory, you can find a sample file, `ttn-org-example.yml`, which can be used as a starting point. Make a copy in your organization's `host_vars` directory with the appropriate name to match the name used in your `hosts` file.
-
-## group_vars/
-This directory contains information (in the form of variable settings) about each of the groups, one file per group. The file for group <code>[<em>groupname</em>]</code> is named <code>group_vars/<em>groupname</em>.yml</code>.
-
-### group_vars/conduits.yml
-
-This file contains information (again, in the form of variable settings) that apply to all gateways that are in the `[conduits]` group in the inventory. 
-
-
-# How Provisioning Works
-
-1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
-2. The ops team assigns an initial jumphost port number for this Conduit, and records the jumphost port <=> Conduit mapping. At MCCI, we identify the Conduit by Ethernet MAC address.
-3. The provisioning system is set up like this:  
-   ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
-4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
-   1. Install the starting point for Ansible
-
-5. Either manually, or using Ansible, the following steps are performed. To do using Ansible, a new `provision.yml` is needed, and the inventory has to be a special provisioning inventory.
-
-   1. Generate a private key to be used for autossh key, and fetch the public key to be stored in the database for the Conduit.
-   2. Establishes an autossh to the initial jumphost using the assigned port number.
-   3. Installs an initial authorized_keys file for root login using the ops team key.
-   4. Disables password-based login for root via ssh.
-
-5. The provisioning PC installs the public key for the new Conduit on the jumphost.
-
-6. The provisioning PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
-
-7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then 
-   1. assigns the Conduit a new address
-   2. Sets up the initail authorized key file for use during the rest of the provisioning process
-   3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
-
-8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:  
-   ![Live Model](http://www.plantuml.com/plantuml/png/JO_1JiGm34Jl_WhVE2Ny05e9bHC2KMd52I6KjgQDrCHHucm5X_rsNBQ5lSradB7V3RQpY_Bw_8G-k97mapFAHCY9iXCVHomaDLay4k6oB3QjypNCjkS047aWVAmXJLpauje6tw3DVFB5SrmRsWRUBrd3SQXUT61J6WnENESAuKiU7rHhgCf5_wtxEUAQWp46HlsOAV6lyV54KJX_mRhvu-HokOKnSqsRlYg-ZyLtCsdnhbBcdeQQgVmrbze57kfC819DgBDueNuoVT0gs17npjgT0fJKsiC_llhp-N0T6xDJmKwdJziLFm00)
-
-   For clarity, we show the databases on the Provisioning PC in this diagram.
-
-   Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
