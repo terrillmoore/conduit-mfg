@@ -1,0 +1,13 @@
+@startuml
+cloud Internet
+node Router as "Local Router"
+node "Jumphost"
+node "Provisioning PC" as PC
+node "Conduit" as Conduit
+
+Internet -- Router
+Internet -- Jumphost
+Router -- PC
+Router -- Conduit
+PC ..> Conduit
+@enduml
