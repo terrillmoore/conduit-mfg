@@ -329,7 +329,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     root@mtcdt:~#
     ```
 
-   At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we're about to change all that.
+    At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we're about to change all that.
 
 6. Check the mLinux version:
     ```shell
@@ -338,7 +338,8 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     Built from branch: (detachedfromecc3f47)
     Revision: ecc3f47d9fb7e9477aeb0bf2503217aa64082afd
     ```
-   If the version is not at least 3.3.1, **stop** -- you have to upgrade to a newer version of mLinux before you can proceed.
+
+    If the version is not at least 3.3.1, **stop** -- you have to upgrade to a newer version of mLinux before you can proceed.
 
 ## Perform the stage1 initialization
 1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
