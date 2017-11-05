@@ -120,9 +120,17 @@ This file contains information (again, in the form of variable settings) that ap
 ## How Provisioning Works
 
 1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
-2. The ops team assigns an initial jumphost port number for this Conduit, and records the jumphost port <=> Conduit mapping. At MCCI, we identify the Conduit by Ethernet MAC address.
-3. <a name="Provisioning-Setup-item"></a>The provisioning system is set up like this:  
+
+2. <a name="Provisioning-Setup-item"></a>The provisioning system is set up like this:  
    ![Provisioning Model](http://www.plantuml.com/plantuml/png/NO-nJiD038PtFuNLfTDTbBGWwC3IALKH4HKJOZWbHtjIOaU9ZuYtnpGvWRhTvxC__yxMMBMEvEtvYA5pPu-VFA1SF0OA4boBevVOMpnvZzCqsVwtEtQjhRc3TGPGjnmRB4dyG5w0kF7uob4Ht-78jIfc16CCl5m_ocg7ZhwX95eeVoniVlzW2rlSRRDY2n-pQNM8NN_XKLOpLtkrLWD_XJ4m1JfhvIg-bMoIOS_Kn20wjhoq7KxY9DGtctCTWNG86fDo_o-bEB2Sg2KDy0TfX-QqzYdX3m00)
+
+3. The provisioning operator runs a script PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
+
+7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then 
+   1. assigns the Conduit a new address
+   2. Sets up the initail authorized key file for use during the rest of the provisioning process
+   3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
+
 4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
    1. Install the starting point for Ansible
 
@@ -135,19 +143,13 @@ This file contains information (again, in the form of variable settings) that ap
 
 5. The provisioning PC installs the public key for the new Conduit on the jumphost.
 
-6. The provisioning PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
-
-7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then 
-   1. assigns the Conduit a new address
-   2. Sets up the initail authorized key file for use during the rest of the provisioning process
-   3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
-
 8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:  
    ![Live Model](http://www.plantuml.com/plantuml/png/JO_1JiGm34Jl_WhVE2Ny05e9bHC2KMd52I6KjgQDrCHHucm5X_rsNBQ5lSradB7V3RQpY_Bw_8G-k97mapFAHCY9iXCVHomaDLay4k6oB3QjypNCjkS047aWVAmXJLpauje6tw3DVFB5SrmRsWRUBrd3SQXUT61J6WnENESAuKiU7rHhgCf5_wtxEUAQWp46HlsOAV6lyV54KJX_mRhvu-HokOKnSqsRlYg-ZyLtCsdnhbBcdeQQgVmrbze57kfC819DgBDueNuoVT0gs17npjgT0fJKsiC_llhp-N0T6xDJmKwdJziLFm00)  
     For clarity, we show the databases on the Provisioning PC in this diagram.
 
     Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
 
+## How J
 # Practice
 
 This section gives procedures for setting up a Conduit, assuming the theory outlined [above](#Theory).
@@ -215,26 +217,14 @@ git clone https://github.com/SomeUser/org-SomeOrg-gateways.git
 git submodule init && git submodule update
 ```
 
-### Assigning ports on your jumphost
-This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports. But we leave this to you -- find out how your organization manages ports on the jumphost, and assign a batch of ports, one port per gateway to be provisioned.
+### User names and ports on your jumphost
+This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports. 
 
-The remote interface would take a public key and hand back a port number. (This could be done fairly easily by calling `useradd` to create a new user and deriving the port number from the generated user ID.)  Assuming that your jumphost has the group <code>ttn-<em>orgname</em>-gateways</code>, you can add the gateway and get a unique ID in the range [15000..*] using the following command:
+But instead we take advantage of the Unix "add user" process, which will assign a small number as the "user ID". We arrange for this ID to be above the reserved port boundary (1024 or larger -- in fact, starting with 20000 in this version). We create a user for each gateway on the jumphost during provisioning, using the Ethernet MAC address as the last portion of the name -- and **_we use the UID as the port number_!** This has the delightful side effect that the open port numbers shown in `netstat -in` can be readily mapped back to system. 
 
-<pre>$ <strong>sudo adduser --gecos "ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>" \
-        --disabled-password ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em> \
-        --ingroup ttn-<em>orgname</em>-gateways --firstuid 15000</strong>
-Adding user `ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' ...
-Adding new user `ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' (15000) with group `ttn-<em>orgname</em>-gateways' ...
-Creating home directory `/home/ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' ...
-Copying files from `/etc/skel' ...
-$
-</pre>
+The provisioning process further creates the group <code>ttn-<em>orgname</em>-gateways</code> to be used for all the gateway users.
 
-Use the assigned UID as the reverse SSH port number. The gateway will login with the specifed user name.
-
-The next step is to populate this with the public key of the gateway; and that requires that the gateway generate a public/private key pair. We'll do that below, during the provisioning process, using the ops team operator's ssh-agent running on his control system.
-
-For this scheme, the ops team operator must have an ssh login on the jumphost with sudo permissions.
+At the end of the [second stage](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#do-stage-2-setup), the script prints out the derived information in a form that can be used to update the provisioning files. Of course, it would be simple for Ansible to automatically update the database files, but that's not been done yet.
 
 ### Ansible setup
 You need to have a relatively recent verion.
@@ -262,7 +252,7 @@ Using the shell, create the `authorized_keys` file as follows:
 cat {path}/keyfile1 {path}/keyfile2 ... > roles/conduit/files/authorized_keys
 ```
 
-TODO: have a simpler setup.
+**TODO:** have a simpler setup. Have the makefile create a symlink, perhaps, and use a `.gitignore` so that the symlink doesn't get committed by accident?
 
 ## Preparing the Conduit
 
@@ -276,7 +266,6 @@ TO BE SUPPLIED -- NOT NORMALLY REQUIRED
 Reset the Conduit to factory defaults by powering on, then pressing and holding
 the front-panel RESET button for 5 seconds.  Let the Conduit complete its 
 reboot and reinitialization sequence.
-
 
 ## Setting up Conduit for Ansible
 
@@ -297,7 +286,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 2. Configure the NAT-ing router so that it's inner network is `192.168.2.0/24`.
 3. Make sure the NAT-ing router's address on the inner network is `192.168.2.254`.
 4. Set up the Ubuntu PC (or Windows host that is hosting the Ubuntu VM) a static network address on the NAT. Recommended address is `192.168.2.127`.
-5. If you're doing one Conduit at a time, set up the NAT-ing router so that the dynamic address pool begins *and ends* with `192.168.2.1`. This means that the Conduit under test will be at `192.168.2.1` even after the switch to DNS. 
+5. If you're doing one Conduit at a time, try setting up the NAT-ing router so that the dynamic address pool begins *and ends* with `192.168.2.1`. This means that the Conduit under test will be at `192.168.2.1` even after the switch to DNS, and it may mean that you can completely avoid use of the USB terminal. However, if you can't do this, the USB terminal is simple.
 
 
 ## Attaching the Conduit while in Factory State
@@ -329,7 +318,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     root@mtcdt:~#
     ```
 
-    At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we're about to change all that.
+    At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we'll change that in a moment.
 
 6. Check the mLinux version:
     ```shell
@@ -344,18 +333,22 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 ## Perform the stage1 initialization
 
 1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
+
     ```shell
     cd $TOPLEVEL
     ttn-multitech-cm/roles/conduit/files/generate-conduit-stage1 > /tmp/conduit-stage1
     ```
 
-2. **On the management PC:** Use sftp to copy the file to the Conduit.
+2. **On the management PC:** Use scp to copy the file to the Conduit.
+
     ```shell
-    sftp -p /tmp/conduit-stage1 root@192.168.2.1:/tmp
+    scp -p /tmp/conduit-stage1 root@192.168.2.1:/tmp
     ```
+
     You'll be prompted for root's password.
 
 3. **Via USB:** Run the script you've just copied over. In principal this can also be done via the Ethernet connection, but this is easier if you have a USB cable, because there's no fireball state and you can manually move cables between routers if you don't have the special setup.
+
     ```
     root@mtcdt:~# sh /tmp/conduit-stage1
     Restarting OpenBSD Secure Shell server: sshd.
@@ -396,6 +389,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     ```
 
 4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
+
     ```shell
     if [ X"$SSH_AUTH_SOCK" = X ]; then eval `ssh-agent` ; fi
     ssh-add {path}/keyfile
@@ -405,6 +399,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     **_Remember to change the IP address to match what DHCP assigned!_**
 
 5. **On the managment PC:** Verify that password-based login is disabled.
+
     ```shell
     $ SSH_AUTH_SOCK= ssh root@192.168.4.9
     Permission denied (publickey,keyboard-interactive).
@@ -460,6 +455,14 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
     ```
 
 ## Update configuration with final jumphost port
+
+As decribed above, there are two steps:
+
+1. A file named <code>inventory/host_vars/<em>newhost</em>.yml</code> must be created (normally by copying one of the example files, and then editing it).
+
+2. the name of the new gateway (i.e., <code><em>newhost</em></code>) must be added to the [`inventory/hosts` inventory file](#the-hosts-file).
+
+You can check that the host is reachable from Ansible using <code>make TARGET=<em>newhost</em> ping</code>.
 
 ## Use Ansible to complete the setup
 
