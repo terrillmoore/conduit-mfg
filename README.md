@@ -356,7 +356,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     You'll be prompted for root's password.
 
 3. **Via USB:** Run the script you've just copied over. In principal this can also be done via the Ethernet connection, but this is easier if you have a USB cable, because there's no fireball state and you can manually move cables between routers if you don't have the special setup.
-    ```shell
+    ```
     root@mtcdt:~# sh /tmp/conduit-stage1
     Restarting OpenBSD Secure Shell server: sshd.
     All set: press enter to enable DHCP
