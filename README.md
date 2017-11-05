@@ -153,7 +153,7 @@ This section gives procedures for setting up a Conduit, assuming the theory outl
 
 ## Setting up your manufacturing station
 This procedure requires the following setup. (See [the figure](#Provisioning-Setup-item) in the Theory section, above.)
-1. A router connected to the internet. It must be set up for NAT, and the downstream network must be set for `192.168.2.0/24`. Its address on the network should be `192.168.2.254`. It should be provisioned to offer DHCP to downstream devices. The recommended downstream setup is to set aside a pool starting at `192.168.2.128`. 
+1. A router connected to the internet. It must be set up for NAT, and the downstream network must be set for `192.168.2.0/24`. Its address on the network should be `192.168.2.254`. It should be provisioned to offer DHCP to downstream devices. The recommended downstream setup is to set aside a pool starting at `192.168.2.1` of length 1; this is most flexible. However, you can make the procedure work with a dedicate USB-Ethernet adapter and moving the Ethernet cable to a DHCP-capable router with access to the host at the right moment.
 2. A Ubuntu system or VM with:
     - Ubuntu-64 16.04LTS
     - Ansible
@@ -167,7 +167,73 @@ This procedure requires the following setup. (See [the figure](#Provisioning-Set
 
     **NOTE**: the Conduit accessory kit is not strictly required; but using a separate accessory kit means that you won't have to open up the end-user's accessory kit.
 
+### Creating an organizational repo
+There may be a "starting point" repo you can clone; ask (and update this document if you find that there is).
+
+To create one by hand:
+
+1. Create a repo on your favorite git server. The canonical name is of the form <code>org-<em>myorgname</em>-gateways.git</code>; change <code><em>myorgname</em></code> to something appropriate.
+2. Add a `README.md` through the web interface, including the checkout instructions (like [this](https://gitlab-x.mcci.com/client/milkweed/mcgraw/org-ttnnyc-gateways/blob/master/README.md)):
+    ```markdown
+    # Organizational database for TTN NYC gateways
+
+    This repo contains the info and links to procedures required for setting up gateways
+    managed by The Things Network New York.
+
+    It contains submodules. Therefore, the checkout procedure has two steps:
+    1. git clone as usual.
+    2. Then `git submodule init && git submodule update`.
+
+    A one-step approach is `git clone --recursive`, but generally one forgets to do this!
+
+    See the documentation in [conduit-mfg](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg).
+    ```
+3. Clone the repo to a dev system.
+4. Change directory into the repo.
+5. On the dev system, add the [ttn-multitech-cm](https://github.com/IthacaThings/ttn-multitech-cm.git) repository as a submodule using the following command.
+    ```shell
+    git submodule add https://github.com/IthacaThings/ttn-multitech-cm
+    git commit -m "Add Ansible procedures"
+    ```
+6. Create the initial variable directories.
+    ```shell
+    cp -R ttn-multitech-cm/*_vars .
+    cp ttn-multitech-cm/hosts .
+    git add .
+    git commit -m "Seed initial organizational variables"
+    ```
+
 ### Checking out your organizational repo
+The easy way:
+```shell
+git clone --recursive https://github.com/SomeUser/org-SomeOrg-gateways.git
+```
+The hard way:
+```shell
+git clone https://github.com/SomeUser/org-SomeOrg-gateways.git
+git submodule init && git submodule update
+```
+
+### Assigning ports on your jumphost
+This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports. But we leave this to you -- find out how your organization manages ports on the jumphost, and assign a batch of ports, one port per gateway to be provisioned.
+
+The remote interface would take a public key and hand back a port number. (This could be done fairly easily by calling `useradd` to create a new user and deriving the port number from the generated user ID.)  Assuming that your jumphost has the group <code>ttn-<em>orgname</em>-gateways</code>, you can add the gateway and get a unique ID in the range [15000..*] using the following command:
+
+<pre>$ <strong>sudo adduser --gecos "ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>" \
+        --disabled-password ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em> \
+        --ingroup ttn-<em>orgname</em>-gateways --firstuid 15000</strong>
+Adding user `ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' ...
+Adding new user `ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' (15000) with group `ttn-<em>orgname</em>-gateways' ...
+Creating home directory `/home/ttn-<em>orgname</em>-<em>00-00-00-4a-26-ee</em>' ...
+Copying files from `/etc/skel' ...
+$
+</pre>
+
+Use the assigned UID as the reverse SSH port number. The gateway will login with the specifed user name.
+
+The next step is to populate this with the public key of the gateway; and that requires that the gateway generate a public/private key pair. We'll do that below, during the provisioning process, using the ops team operator's ssh-agent running on his control system.
+
+For this scheme, the ops team operator must have an ssh login on the jumphost with sudo permissions.
 
 ### Ansible setup
 You need to have a relatively recent verion.
@@ -185,7 +251,15 @@ ansible 2.4.1.0
   python version = 2.7.12 (default, Nov 19 2016, 06:48:10) [GCC 5.4.0 20160609]
 ```
 
-When things are working, `make syntax-check` should work, more or less (with some grumbles about jumphost.example.com).
+When things are working, check`make syntax-check` should work, more or less (with some grumbles about jumphost.example.com).
+
+### Install your authorized_keys in your Ansible setup
+This is unfortunately something that has to be done (at present) by updating the Ansible procedure files. We've got an issue filed on this, [#19](https://github.com/IthacaThings/ttn-multitech-cm/issues/19).
+
+Using the shell, create the `authorized_keys` file as follows:
+```shell
+cat {path}/keyfile1 {path}/keyfile2 ... > roles/conduit/files/authorized_keys
+```
 
 TODO: have a simpler setup.
 
@@ -210,7 +284,8 @@ the Conduit's initial IP address is `192.168.2.1`.
 
 In this first step, we'll do the following.
 1. Connect to the Conduit via a dedicated Ethernet port.
-2. Set up the Conduit for DHCP and prepare for Ansible control.
+2. Set up the Conduit for DHCP and set up the auto-SSH tunnel to the jumphost
+3. Ansible control.
 3. Restart.
 
 ## PC Setup Prerequisites
@@ -264,42 +339,58 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     ```
    If the version is not at least 3.3.1, **stop** -- you have to upgrade to a newer version of mLinux before you can proceed.
 
-## Set the Conduit to use DHCP and connect to the network
-1. **Via USB**: On the Conduit, edit `/etc/network/interfaces` to enable DHCP client.
-    ```
-    # Wired interface
-    auto eth0
-    iface eth0 inet dhcp 
-    ```
-
-2. Connect to a network with DHCP and force a cycle.  **Via USB**:
+## Perform the stage1 initialization
+1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
     ```shell
-    root@mtcdt:~# ifdown eth0 ; ifup eth0
-    udhcpc (v1.22.1) started
-    Sending discover...
-    Sending discover...
-    Sending select for 192.168.2.1...
-    Lease of 192.168.2.1 obtained, lease time 86400
-    /etc/udhcpc.d/50default: Adding DNS 192.168.2.254
-    root@mtcdt:~#
+    cd $TOPLEVEL
+    ttn-multitech-cm/roles/conduit/files/generate-conduit-stage1 > /tmp/conduit-stage1
     ```
-
-3. Verify that ping is working. **Via USB**:
-     ```
-    root@mtcdt:~# ping 8.8.8.8
-    PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
-    64 bytes from 8.8.8.8: icmp_seq=1 ttl=54 time=9.31 ms
-    64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=8.70 ms
-    64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=8.99 ms
-    64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=8.94 ms
-    64 bytes from 8.8.8.8: icmp_seq=5 ttl=54 time=9.06 ms
-    ^C
-    --- 8.8.8.8 ping statistics ---
-    5 packets transmitted, 5 received, 0% packet loss, time 4006ms
-    rtt min/avg/max/mdev = 8.703/9.005/9.318/0.215 ms
-    root@mtcdt:~#
+2. **On the management PC:** Use sftp to copy the file to the Conduit.
+    ```shell
+    sftp -p /tmp/conduit-stage1 root@192.168.2.1:/tmp
     ```
+    You'll be prompted for root's password.
 
+3. **Via USB:** Run the script you've just copied over. In principal this can also be done via the Ethernet connection, but this is easier if you have a USB cable, because there's no fireball state and you can manually move cables between routers if you don't have the special setup.
+   <pre><code>root@mtcdt:~# <strong>sh /tmp/conduit-stage1</strong>
+   Restarting OpenBSD Secure Shell server: sshd.
+   All set: press enter to enable DHCP
+   
+   udhcpc (v1.22.1) started
+   Sending discover...
+   Sending discover...
+   Sending select for 192.168.4.9...
+   Lease of 192.168.4.9 obtained, lease time 86400
+   /etc/udhcpc.d/50default: Adding DNS 192.168.4.1
+   checking ping
+   PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+   64 bytes from 8.8.8.8: icmp_seq=1 ttl=54 time=9.12 ms
+   64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=8.74 ms
+   64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=8.99 ms
+   64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=8.97 ms
+   
+   --- 8.8.8.8 ping statistics ---
+   4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+   rtt min/avg/max/mdev = 8.741/8.957/9.124/0.180 ms
+   
+   if ping succeeded, you're ready to proceed by logging in from the
+   remote test system with ssh. Check the IP address from the ifconfig output
+   below...
+   
+   eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:26:F0
+             inet addr:<strong>192.168.4.9</strong>  Bcast:0.0.0.0  Mask:255.255.255.0
+             inet6 addr: fe80::208:ff:fe4a:26f0/64 Scope:Link
+             UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+             RX packets:857 errors:0 dropped:0 overruns:0 frame:0
+             TX packets:456 errors:0 dropped:0 overruns:0 carrier:0
+             collisions:0 txqueuelen:1000
+             RX bytes:81307 (79.4 KiB)  TX bytes:57594 (56.2 KiB)
+             Interrupt:23 Base address:0xc000
+   
+   root@mtcdt:~#
+   </code></pre>
+
+4. **On the managment PC:** Test that ssh is working by adding the key to your ssh agent, 
 ## Set time and Install Prerequisites
 
 Return to the Ubuntu PC, and connect via Ethernet
