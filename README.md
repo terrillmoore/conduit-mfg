@@ -66,7 +66,8 @@ For the purposes of this discussion, we'll assume the following directory struct
     ttn-multitech-cm/
         .git/
         Makefile
-        ...</pre>
+        ...
+</pre>
 
 Note that `ttn-multitech-cm/` is a git [_**submodule**_](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
 
@@ -390,7 +391,12 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
    root@mtcdt:~#
    </code></pre>
 
-4. **On the managment PC:** Test that ssh is working by adding the key to your ssh agent, 
+4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
+    ```shell
+    if [ X"$SSH_AGENT" = X ]; then eval `ssh-agent` ; fi
+    ssh-add {path}/keyfile
+    ```
+
 ## Set time and Install Prerequisites
 
 Return to the Ubuntu PC, and connect via Ethernet
