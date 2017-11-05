@@ -427,7 +427,7 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
 
     Note the instructions for connecting that are printed at the end of a succesful run, for example:
 
-    ```shell
+    ```
     ************
     * Success! *
     ************
