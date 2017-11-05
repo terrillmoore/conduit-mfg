@@ -397,45 +397,34 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
 4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
     ```shell
-    if [ X"$SSH_AGENT" = X ]; then eval `ssh-agent` ; fi
+    if [ X"$SSH_AUTH_SOCK" = X ]; then eval `ssh-agent` ; fi
     ssh-add {path}/keyfile
+    ssh root@192.168.4.9
     ```
 
-## Set time and Install Prerequisites
+    **_Remember to change the IP address to match what DHCP assigned!_**
 
-Return to the Ubuntu PC, and connect via Ethernet
-
-1. Using the address noted above (`192.168.2.1` in this case, but it might be different if testing multiple Conduits in parallel), ssh into the Conduit.
+5. **On the managment PC:** Verify that password-based login is disabled.
     ```shell
-    $ ssh root@192.168.2.1
-    Password: 
-    Last login: Sat Sep 30 02:06:07 2017 from 192.168.2.127
-    root@mtcdt:~#
+    $ SSH_AUTH_SOCK= ssh root@192.168.4.9
+    Permission denied (publickey,keyboard-interactive).
     ```
 
-2. Install Prerequisites for Ansible. Cut and paste the following.
+    If the Conduit lets you log in with password `root`, stop! Something has gone wrong.
+
+## Do stage 2 setup
+
+The remaining work is done using the PC and ssh. The USB cable is no longer needed. However we still need to get the unit connected to the jump host.
+
+1. Using the address noted above (`192.168.4.9` in this case), install prerequisites for Ansible, and copy the required files. Cut and paste the following. 
     ```shell
-    ntpdate -ub pool.ntp.org && opkg update && opkg install python-pkgutil && opkg install python-distutils
-    ```
-   You'll see something like this:
-    ```
-     3 Nov 00:45:25 ntpdate[833]: step time server 204.9.54.119 offset offset 2923907.893520  sec
-    Downloading http://multitech.net/mlinux/feeds/3.3.13/all/Packages.gz.
-    Inflating http://multitech.net/mlinux/feeds/3.3.13/all/Packages.gz.
-    Updated list of available packages in /var/lib/opkg/mlinux-all.
-    Downloading http://multitech.net/mlinux/feeds/3.3.13/arm926ejste/Packages.gz.
-    Inflating http://multitech.net/mlinux/feeds/3.3.13/arm926ejste/Packages.gz.
-    Updated list of available packages in /var/lib/opkg/mlinux-arm926ejste.
-    Downloading http://multitech.net/mlinux/feeds/3.3.13/mtcdt/Packages.gz.
-    Inflating http://multitech.net/mlinux/feeds/3.3.13/mtcdt/Packages.gz.
-    Updated list of available packages in /var/lib/opkg/mlinux-mtcdt.
-    Installing python-pkgutil (2.7.3-r0.3.0) to root...
-    Downloading http://multitech.net/mlinux/feeds/3.3.13/arm926ejste/python-pkgutil_2.7.3-  r0.3.0_arm926ejste.ipk.
-    Configuring python-pkgutil.
-    Installing python-distutils (2.7.3-r0.3.0) to root...
-    Downloading http://multitech.net/mlinux/feeds/3.3.13/arm926ejste/python-distutils_2.7.3-    r0.3.0_arm926ejste.ipk.
-    Configuring python-distutils.
+    CONDUIT=192.168.4.9
+    scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp && \
+        ssh root@$CONDUIT JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com \
+            JUMPADMIN=tmm JUMPPORT=22 MYPREFIX=ttn-nyc /tmp/conduit-stage2
     ```
 
-Now that we have the Conduit set up, our next step is to set up the configuration.
+## Update configuration with final jumphost port
+
+## Use Ansible to complete the setup
 
