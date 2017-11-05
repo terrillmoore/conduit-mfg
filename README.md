@@ -342,11 +342,13 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     If the version is not at least 3.3.1, **stop** -- you have to upgrade to a newer version of mLinux before you can proceed.
 
 ## Perform the stage1 initialization
+
 1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
     ```shell
     cd $TOPLEVEL
     ttn-multitech-cm/roles/conduit/files/generate-conduit-stage1 > /tmp/conduit-stage1
     ```
+
 2. **On the management PC:** Use sftp to copy the file to the Conduit.
     ```shell
     sftp -p /tmp/conduit-stage1 root@192.168.2.1:/tmp
@@ -354,43 +356,44 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     You'll be prompted for root's password.
 
 3. **Via USB:** Run the script you've just copied over. In principal this can also be done via the Ethernet connection, but this is easier if you have a USB cable, because there's no fireball state and you can manually move cables between routers if you don't have the special setup.
-   <pre><code>root@mtcdt:~# <strong>sh /tmp/conduit-stage1</strong>
-   Restarting OpenBSD Secure Shell server: sshd.
-   All set: press enter to enable DHCP
-   
-   udhcpc (v1.22.1) started
-   Sending discover...
-   Sending discover...
-   Sending select for 192.168.4.9...
-   Lease of 192.168.4.9 obtained, lease time 86400
-   /etc/udhcpc.d/50default: Adding DNS 192.168.4.1
-   checking ping
-   PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
-   64 bytes from 8.8.8.8: icmp_seq=1 ttl=54 time=9.12 ms
-   64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=8.74 ms
-   64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=8.99 ms
-   64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=8.97 ms
-   
-   --- 8.8.8.8 ping statistics ---
-   4 packets transmitted, 4 received, 0% packet loss, time 3004ms
-   rtt min/avg/max/mdev = 8.741/8.957/9.124/0.180 ms
-   
-   if ping succeeded, you're ready to proceed by logging in from the
-   remote test system with ssh. Check the IP address from the ifconfig output
-   below...
-   
-   eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:26:F0
-             inet addr:<strong>192.168.4.9</strong>  Bcast:0.0.0.0  Mask:255.255.255.0
-             inet6 addr: fe80::208:ff:fe4a:26f0/64 Scope:Link
-             UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-             RX packets:857 errors:0 dropped:0 overruns:0 frame:0
-             TX packets:456 errors:0 dropped:0 overruns:0 carrier:0
-             collisions:0 txqueuelen:1000
-             RX bytes:81307 (79.4 KiB)  TX bytes:57594 (56.2 KiB)
-             Interrupt:23 Base address:0xc000
-   
-   root@mtcdt:~#
-   </code></pre>
+    ```shell
+    root@mtcdt:~# sh /tmp/conduit-stage1
+    Restarting OpenBSD Secure Shell server: sshd.
+    All set: press enter to enable DHCP
+    
+    udhcpc (v1.22.1) started
+    Sending discover...
+    Sending discover...
+    Sending select for 192.168.4.9...
+    Lease of 192.168.4.9 obtained, lease time 86400
+    /etc/udhcpc.d/50default: Adding DNS 192.168.4.1
+    checking ping
+    PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+    64 bytes from 8.8.8.8: icmp_seq=1 ttl=54 time=9.12 ms
+    64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=8.74 ms
+    64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=8.99 ms
+    64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=8.97 ms
+    
+    --- 8.8.8.8 ping statistics ---
+    4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+    rtt min/avg/max/mdev = 8.741/8.957/9.124/0.180 ms
+    
+    if ping succeeded, you're ready to proceed by logging in from the
+    remote test system with ssh. Check the IP address from the ifconfig output
+    below...
+    
+    eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:26:F0
+              inet addr:192.168.4.9  Bcast:0.0.0.0  Mask:255.255.255.0
+              inet6 addr: fe80::208:ff:fe4a:26f0/64 Scope:Link
+              UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+              RX packets:857 errors:0 dropped:0 overruns:0 frame:0
+              TX packets:456 errors:0 dropped:0 overruns:0 carrier:0
+              collisions:0 txqueuelen:1000
+              RX bytes:81307 (79.4 KiB)  TX bytes:57594 (56.2 KiB)
+              Interrupt:23 Base address:0xc000
+    
+    root@mtcdt:~#
+    ```
 
 4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
     ```shell
