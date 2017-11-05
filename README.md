@@ -416,7 +416,8 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
 The remaining work is done using the PC and ssh. The USB cable is no longer needed. However we still need to get the unit connected to the jump host.
 
-1. Using the address noted above (`192.168.4.9` in this case), install prerequisites for Ansible, and copy the required files. Cut and paste the following. 
+1. Using the address noted above (`192.168.4.9` in this case), install prerequisites for Ansible, and copy the required files. Cut and paste the following.
+
     ```shell
     CONDUIT=192.168.4.9
     scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp && \
