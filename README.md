@@ -425,6 +425,40 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
             JUMPADMIN=tmm JUMPPORT=22 MYPREFIX=ttn-nyc /tmp/conduit-stage2
     ```
 
+    Note the instructions for connecting that are printed at the end of a succesful run, for example:
+
+    ```shell
+    ************
+    * Success! *
+    ************
+    
+    You can now connect to this gateway using the command:
+    
+       ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
+    
+    Don't forget to update host_vars/ttn-nyc-00-08-00-4a-26-f0.yaml to set 
+    
+       ssh_tunnel_remote_port: 20000
+    
+    ```
+
+
+2. From the development computer, test that you can now connect to the Conduit via the jumphost.
+
+    In the general case, this is:
+
+    ```shell
+    ssh -tA  $JUMPADMIN@$JUMPHOST  ssh -A -p $JUMPUID root@localhost
+    ```
+
+    For example:
+
+    ```shell
+    ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
+    Last login: Sun Nov  5 08:39:54 2017 from 192.168.4.6
+    root@mtcdt:~# 
+    ```
+
 ## Update configuration with final jumphost port
 
 ## Use Ansible to complete the setup
