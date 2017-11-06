@@ -480,5 +480,39 @@ As decribed above, there are two steps:
 
 You can check that the host is reachable from Ansible using <code>make TARGET=<em>newhost</em> ping</code>.
 
+
 ## Use Ansible to complete the setup
 
+From here on, we can use Ansible to control the gateway, and life is (ostensibly) good. In every session, you need to follow this procedure.
+
+To avoid spurious errors, we recommed that you start by [loading an access token for The Things Network](#sign-in-to-the-things-network).
+
+Then to get the gateway set up (or to modify it according to the latest inventory and host_vars settings):
+<pre>
+make TARGET=<strong><em>desiredhost</em></strong> apply
+</pre>
+
+### Sign in to The Things Network
+
+Follow this procedure.
+
+1. Run `make fetch` in the ttn-multitech-cm directory to get the latest `ttnctl` binary.
+
+2. [Sign into the Things Network](#sign-in-to-the-things-network). Note that the user you login as must also be the user who will own the gateways (at least initially).
+
+3. Get an access code by clicking on [this link](https://account.thethingsnetwork.org/users/authorize?client_id=ttnctl&redirect_uri=/oauth/callback/ttnctl&response_type=code).You should see something like this:
+
+    ![Image of TTNCTL Access Code](assets/ttn-token.png)
+
+4. Copy and paste the access code into the following command (run in the ttn-multitech-cm directory).
+
+    ```shell
+    bin/ttnctl user login *ACCESS-CODE*
+    ```
+
+    (Change `*ACCESS-CODE*` to the value you copied from the access code window.)
+
+    You should see something like this as a result:
+    ```
+    INFO Successfully logged in as your_ttn_name (your.email@example.com)
+    ```
