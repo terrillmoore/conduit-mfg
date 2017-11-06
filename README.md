@@ -149,14 +149,33 @@ This file contains information (again, in the form of variable settings) that ap
 
     Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
 
-## How J
+## How Jump Hosts are managed
+
+This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports and doing the local setup. 
+
+But instead we take advantage of the Unix "add user" process, which will assign a small number as the "user ID". We arrange for this ID to be numerically special -- unlike normal Unix user IDs, which typicall start at 1000, we use a much higher starting point -- 20000 in this version. We create a user for each gateway on the jumphost during provisioning, using the Ethernet MAC address as the last portion of the name.
+
+Here's the hack. **_We use the UID as the port number_.**  
+
+You might recall that there are two kinds of TCP/IP port numbers, distinguished by their numerical value: _well-known_ ports, which are in the range 0..1023, and __registered ports__ (in the range 1024..65535). (These terms are from [RFC 1700](http://www.ietf.org/rfc/rfc1700.txt).) On most systems, it's inconvenient for user programs to use well-known ports. In this scheme, it's important that each gateway listen on a unique port, and they can't use well-known ports. Since our UIDs are unique for each gateway, and they're in the reserved range, we can use the assigned UID directly as the port number. 
+
+This has the delightful side effect that the open port numbers shown in `netstat -ln` can be readily converted to the gateway ID, using <code>getent passwd <em>portnum</em></code>.
+
+At the end of the [second stage](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#do-stage-2-setup), the script prints out the derived information in a form that can be used to update the provisioning files. Of course, it would be relatively simple for Ansible to automatically update the organizational database files, but that's not been done yet.
+
+The second stage provisioning process further creates the group <code>ttn-<em>orgname</em>-gateways</code> on the jump host, if doesn't already exist. That group is used for all the gateway users. The provisioning process disables the default "create unique group per user" default in `useradd`, because we don't need it for this application.
+
+**Caution:** The jump host server is a single point of failure for provisioning; it must be backed up.
+
 # Practice
 
 This section gives procedures for setting up a Conduit, assuming the theory outlined [above](#Theory).
 
 ## Setting up your manufacturing station
 This procedure requires the following setup. (See [the figure](#Provisioning-Setup-item) in the Theory section, above.)
+
 1. A router connected to the internet. It must be set up for NAT, and the downstream network must be set for `192.168.2.0/24`. Its address on the network should be `192.168.2.254`. It should be provisioned to offer DHCP to downstream devices. The recommended downstream setup is to set aside a pool starting at `192.168.2.1` of length 1; this is most flexible. However, you can make the procedure work with a dedicate USB-Ethernet adapter and moving the Ethernet cable to a DHCP-capable router with access to the host at the right moment.
+
 2. A Ubuntu system or VM with:
     - Ubuntu-64 16.04LTS
     - Ansible
@@ -165,7 +184,8 @@ This procedure requires the following setup. (See [the figure](#Provisioning-Set
 
     This system needs to be conected to a downstream port of the above router. It must have an address other than `192.168.2.1`! 
 
-    Follow the procedure given in [Ansible setup](#ansible-setup) to confirm that your Ansible installation is ready to go.
+    Follow the procedure given in [Ansible setup](#section-ansible-setup) to confirm that your Ansible installation is ready to go.
+
 3. A spare Conduit accessory kit (power supply, Ethernet cable, RP-SMA LoRaWAN antenna).
 
     **NOTE**: the Conduit accessory kit is not strictly required; but using a separate accessory kit means that you won't have to open up the end-user's accessory kit.
@@ -218,15 +238,11 @@ git submodule init && git submodule update
 ```
 
 ### User names and ports on your jumphost
-This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports. 
 
-But instead we take advantage of the Unix "add user" process, which will assign a small number as the "user ID". We arrange for this ID to be above the reserved port boundary (1024 or larger -- in fact, starting with 20000 in this version). We create a user for each gateway on the jumphost during provisioning, using the Ethernet MAC address as the last portion of the name -- and **_we use the UID as the port number_!** This has the delightful side effect that the open port numbers shown in `netstat -in` can be readily mapped back to system. 
+See [How Jump Hosts are managed](#how-jump-hosts-are-managed) for the theory. The practice is automatic and happens as part of [second stage set-up](#do-stage-2-setup).
 
-The provisioning process further creates the group <code>ttn-<em>orgname</em>-gateways</code> to be used for all the gateway users.
 
-At the end of the [second stage](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#do-stage-2-setup), the script prints out the derived information in a form that can be used to update the provisioning files. Of course, it would be simple for Ansible to automatically update the database files, but that's not been done yet.
-
-### Ansible setup
+### <a name="section-ansible-setup"></a>Ansible setup on management PC
 You need to have a relatively recent verion.
 Follow [the instructions](http://docs.ansible.com/ansible/latest/intro_installation.html#latest-releases-via-apt-ubuntu)
 to get things set up properly.
