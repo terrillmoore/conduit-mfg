@@ -3,8 +3,8 @@
 This document summarizes the theory and practice of managing Conduits (and other gateways for The Things Network) using the Ansible framework developed by Jeff Honig.
 
 To jump to the sections, use these links:
-- [Theory](#Theory)
-- [Practice](#Practice)
+- [Theory](#theory)
+- [Practice](#practice)
 
 # Theory
 
