@@ -122,7 +122,7 @@ This file contains information (again, in the form of variable settings) that ap
 1. The Conduit is initaily in factory state, and has static IP address of `192.168.2.1`.
 
 2. <a name="Provisioning-Setup-item"></a>The provisioning system is set up like this:  
-   ![Provisioning Model](https://www.plantuml.com/plantuml/png/NOzFJyCm3CNl_XJMBZirLRk1034qQQTEGrHCdD0EKHksIAbJjGuLtnvlRVYpK_Apdv-VrpthZaFZ89rZwJJns_CERQEF1ZzyXtmoQCcorGvxmw5Lk3S6Xs5GxLajawho3SnJWChvK6D1R3eo3EHhWwy-2E8xx7mb5YD2aYJmScaKvGDg-eA2QABiFbVPxPtALNwpJFCb74QdsJOqxSdtF1kvt8XhsVbFsrjFbevIkHXVcooYmyPJ7IpBsFGJEUnPiwskDcSo0l4GJ9AO-syfne7fH2b9W5-8Ew8E7rUhi-8VHv4Sevv-Q6taRTmt)
+   ![Provisioning Model](http://www.plantuml.com/plantuml/png/NOzFJyCm3CNl_XJMBZirLSj0W12Qj5FH41KJ9yGXQiCMAN6grg7YmcV7Mnl-x9JyxEVdv_N0kkVe7UHBh9qcVddSelLwR_0zzCW7WvOiM-rmC1mxXJjZS1n7rHtLCgcQu66P0pGkn1OhOjEJOQ3G6dmEKH1VOHiQiPWGiYo3frEZgczHqoTKH3CLDwKghgvLgShBLLwku6roMZn4tnt2m8k9wusurdtui8CDP6albPFnkSb5SjW4QgDb6Pj_8eSTQxRDsUP2HY0TWbcMSlyjfJWmdoWb2V0BQKVIuPrIHyK_JY8vvkl-XzP6Nk--0G00)
 
 3. The provisioning operator runs a script PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible. 
 
@@ -144,7 +144,7 @@ This file contains information (again, in the form of variable settings) that ap
 5. The provisioning PC installs the public key for the new Conduit on the jumphost.
 
 8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:  
-   ![Live Model](https://www.plantuml.com/plantuml/png/LO_1JiGm34Jl_WhVEANy04ABoWc1jXBYX11AMzEDbCHHuhI20z-EoxPekSrax77UeOZDKeE7A-oyZVBoz8Wks8dmWpFAYP0JPIikJbX8QchmcGYNPMdIEg-hpS018F98-513Ed6Hi-jQV8Kky-oAuxWsT2sydREMurYTwC2cD1YjsDuMmcEUxbLhgCf6zwNtEUAQWp469btCbFZNk3XJ5CwVi5v-dsqkrp1bhcdJ5yLtiRZUanRlAcKUQAoPobzpgNtWiNe2aMX2zUA4XfCPWbR1ZeWtJRFo_FCxYv9_truwOtOesE7qQVi474W7W_y1)  
+   ![Live Model](http://www.plantuml.com/plantuml/png/LO_1JiGm34Jl_WhVEANy04ABoWc1jXBYX11AMzEDbCHHuhI20z-EoxPekSrax77UeOZDKeE7A-oyZVBoz8Wks8dmWpFAYP0JPIikJbX8QchmcGYNPMdIEg-hpS018F98-513Ed6Hi-jQV8Kky-oAuxWsT2sydREMurYTwC2cD1YjsDuMmcEUxbLhgCf6zwNtEUAQWp469btCbFZNk3XJ5CwVi5v-dsqkrp1bhcdJ5yLtiRZUanRlAcKUQAoPobzpgNtWiNe2aMX2zUA4XfCPWbR1ZeWtJRFo_FCxYv9_truwOtOesE7qQVi474W7W_y1)  
     For clarity, we show the databases on the Provisioning PC in this diagram.
 
     Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations. 
