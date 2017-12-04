@@ -24,9 +24,9 @@ git submodule
 ttn-multitech-cm
 ]
 
+Jumphost <.. PC
 Jumphost <.. Conduit
-PC ..> Jumphost
-PC ~~> Conduit
+PC ~> Conduit
 PC -- OrgData
 OrgData -- Ansible
 @enduml
