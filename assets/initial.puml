@@ -25,7 +25,7 @@ Internet -- Router
 Internet -- Jumphost
 Router -- PC
 Router -- Conduit
-Jumphost <== PC
-Jumphost <== Conduit
-PC .> Conduit
+Jumphost <.. PC
+Jumphost <.. Conduit
+PC ~> Conduit
 @enduml
