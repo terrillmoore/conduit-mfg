@@ -1,13 +1,31 @@
 @startuml
+/' PlantUML image for the initial setup. See www.plantuml.com
+'/
+
 cloud Internet
-node Router as "Local Router"
+node Router [
+Local Router
+---
+Outer IP: any
+Inner IP: 192.168.2.254/24
+]
 node "Jumphost"
-node "Provisioning PC" as PC
-node "Conduit" as Conduit
+node PC [
+Provisioning PC
+---
+IP: 192.168.2.253
+]
+node Conduit [
+Conduit
+--
+Static IP: 192.168.2.1
+]
 
 Internet -- Router
 Internet -- Jumphost
 Router -- PC
 Router -- Conduit
-PC ..> Conduit
+Jumphost <== PC
+Jumphost <== Conduit
+PC .> Conduit
 @enduml
