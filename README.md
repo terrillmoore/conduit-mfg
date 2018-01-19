@@ -200,19 +200,39 @@ This file contains information (again, in the form of variable settings) that ap
 
     Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations.
 
-### How Jump Hosts are managed
+### How Jump Hosts and Ports are managed
 
-This is a big topic; ideally the jumphost itself would have a web interface for assigning free ports and doing the local setup.
+Every remote device connected via the jump host must have three unique "port numbers" (or "ports") assigned. These ports are used for TCP/IP communication, and must be different from each other, and from the port numbers assigned for any other devices managed by the jump host.
 
-But instead we take advantage of the Unix "add user" process, which will assign a small number as the "user ID". We arrange for this ID to be numerically special -- unlike normal Unix user IDs, which typicall start at 1000, we use a much higher starting point -- 20000 in this version. We create a user for each gateway on the jumphost during provisioning, using the Ethernet MAC address as the last portion of the name.
+There are two kinds of ports.
 
-Here's the hack. **_We use the UID as the port number_.**
+1. The **SSH tunnel port** is the port that we use when logging into the gateway.
 
-You might recall that there are two kinds of TCP/IP port numbers, distinguished by their numerical value: _well-known_ ports, which are in the range 0..1023, and __registered ports__ (in the range 1024..65535). (These terms are from [RFC 1700](http://www.ietf.org/rfc/rfc1700.txt).) On most systems, it's inconvenient for user programs to use well-known ports. In this scheme, it's important that each gateway listen on a unique port, and they can't use well-known ports. Since our UIDs are unique for each gateway, and they're in the reserved range, we can use the assigned UID directly as the port number.
+2. The **keepalive ports** are ports that are used internally by the software to detect when a connection between the device and the jumphost has been broken. For technical reasons, these ports are always assigned in pairs (e.g., 40004, 40005; or 50124, 50125). We only specify the first port of the pair. Software assumes that the second port is equal to the base port number, plus one.
+
+The port numbers have to be in the range 1,024 to 65,535.
+
+So in theory we need to keep track of both the SSH tunnel port and the keepalive base port, and make sure we don't assign the same number twice.
+
+This could be a big problem; ideally the jumphost itself would have a web interface for assigning free ports and doing the local setup, plus an API to be used by Ansible.
+
+But instead we assign a single number as the SSH tunnel port, and then derive the base port from that using arithmetic.  To assign the SSH tunnel port, we take advantage of the Unix "add user" process, which will assign a small number as the "user ID". We arrange for this ID to be numerically special -- unlike normal Unix user IDs, which typically start at 1000, we use a much higher starting point -- 20000 in this version. We create a user for each gateway on the jumphost during provisioning, using the Ethernet MAC address as the last portion of the name.
+
+Here's the first part of the hack. **_We use the UID as the SSH tunnel port number_.**
+
+There are two kinds of TCP/IP port numbers, distinguished by their numerical value: _well-known_ ports, which are in the range 0..1023, and __registered ports__ (in the range 1024..65535). (These terms are from [RFC 1700](http://www.ietf.org/rfc/rfc1700.txt).) On most systems, it's inconvenient for user programs to use well-known ports. In this scheme, it's important that each gateway listen on a unique port, and they can't use well-known ports. Since our UIDs are unique for each gateway, and they're in the reserved range, we can use the assigned UID directly as the port number.
+
+(We're assuming that we're tightly controlling all the other activity on the jump host, so we don't have to worry about other programs using ports that collide with our assignments.)
 
 This has the delightful side effect that the open port numbers shown in `netstat -ln` can be readily converted to the gateway ID, using <code>getent passwd <em>portnum</em></code>.
 
-At the end of the [second stage](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#do-stage-2-setup), the script prints out the derived information in a form that can be used to update the provisioning files. Of course, it would be relatively simple for Ansible to automatically update the organizational database files, but that's not been done yet.
+To assign the keepalive base port, we simply map the SSH tunnel port from [20000..20000+n-1] to [30000..2*(n-1)]. In other words, 20000 maps to 30000 and 30001, 20001 maps to 30002 and 30003, and so forth. This approach limits us to ten thousand keepalive base ports on a given jump host; this limitation is acceptable for now.
+
+#### Mechanizing the hacks
+
+The [second stage configuration script](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#do-stage-2-setup) creates a user for each gateway, and records the assigned user ID (which is the SSH tunnel port for that system).
+
+The script then calcluates the related prints out the derived information in a form that can be used to update the provisioning files. Of course, it would be relatively simple for Ansible to automatically update the organizational database files, but that's not been done yet.
 
 The second stage provisioning process further creates the group <code>ttn-<em>orgname</em>-gateways</code> on the jump host, if doesn't already exist. That group is used for all the gateway users. The provisioning process disables the default "create unique group per user" default in `useradd`, because we don't need it for this application.
 
@@ -557,7 +577,7 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
     ```bash
     CONDUIT=192.168.4.9
     scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp && \
-        ssh root@$CONDUIT JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com \
+        ssh -tA root@$CONDUIT JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com \
             JUMPADMIN=tmm JUMPPORT=22 MYPREFIX=ttn-nyc /tmp/conduit-stage2
     ```
 
@@ -572,9 +592,10 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
 
        ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
 
-    Don't forget to update host_vars/ttn-nyc-00-08-00-4a-26-f0.yaml to set
+    Don't forget to update host_vars/ttn-nyc-00-08-00-4a-26-f0.yaml to set these values
 
        ssh_tunnel_remote_port: 20000
+       ssh_tunnel_keepalive_base_port: 40000
     ```
 
 2. From the development computer, test that you can now connect to the Conduit via the jumphost.
