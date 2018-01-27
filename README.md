@@ -479,8 +479,8 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
 
     ```console
-    cd $TOPLEVEL
-    ttn-multitech-cm/roles/conduit/files/generate-conduit-stage1 ~/.ssh/conduit.pub > /tmp/conduit-stage1
+    cd ${SANDBOX}/ttn-multitech-cm
+    roles/conduit/files/generate-conduit-stage1 ~/.ssh/conduit.pub > /tmp/conduit-stage1
     ```
 
     By default, this generates a script suitable for use when logging into the Conduit via Ethernet. This is your only option if configuring a Conduit AP. If configuring a Conduit 210 or 246, you have the option of using a USB connection.  In that case, consider editing `generate-conduit-stage1` to enable `OPTUSBSER`, and regenerate `/tmp/conduit-stage1` if needed.
@@ -488,81 +488,120 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 2. **On the management PC:** Use scp to copy the file to the Conduit.
 
     ```shell
-    scp -p /tmp/conduit-stage1 root@192.168.2.1:/tmp
+    CONDUIT=192.168.2.1
+    scp -p /tmp/conduit-stage1 root@${CONDUIT}:/tmp
     ```
 
     You'll be prompted for root's password.
 
 3. Now we need to run the script.
 
-   - **Via Ethernet:** Run the script you've just copied over. The Conduit will reboot, at which point you need to move the cable to a network segment with a suitable DHCP server. The output looks like this:
+   - **Via Ethernet:** Log into $CONDUIT, and run the script you've just copied over. The Conduit will set up for DHCP. If the Conduit is not on a network with a DHCP servier, you will need to move the cable to a network segment. The output looks like this:
 
       ```console
-      root@mtcap:~# sh /tmp/conduit-stage1
-      All set: press enter to reboot:
-      rebooting...
-      root@mtcap:~# Connection to 192.168.2.1 closed by remote host.
-      Connection to 192.168.2.1 closed.
-      tmm@Ubuntu16-04-02-64:~/sandbox/org-ttn-ithaca-gateways$
-      ```
-
-   Move the cable while the Conduit is rebooting. Log into your router or DHCP server, and find out what address your device was given.
-
-   - **Via USB:** Run the script you've just copied over. In principal this can also be done via the Ethernet connection, but this is easier if you have a USB cable, because there's no fireball state and you can manually move cables between routers if you don't have the special setup.
-
-      ```console
+      tmm@Ubuntu16-04-02-64:~/sandbox/ttn-multitech-cm$ ssh root@${CONDUIT}
+      Enter passphrase for key '/home/tmm/.ssh/id_rsa':
+      Password:
+      Last login: Fri Jan 26 15:42:05 2018 from desktop-dsjhc38
       root@mtcdt:~# sh /tmp/conduit-stage1
-      Restarting OpenBSD Secure Shell server: sshd.
       All set: press enter to enable DHCP
 
       udhcpc (v1.22.1) started
       Sending discover...
       Sending discover...
-      Sending select for 192.168.4.9...
-      Lease of 192.168.4.9 obtained, lease time 86400
-      /etc/udhcpc.d/50default: Adding DNS 192.168.4.1
+      Sending select for 192.168.1.108...
+      Lease of 192.168.1.108 obtained, lease time 86400
+      /etc/udhcpc.d/50default: Adding DNS 192.168.1.1
       checking ping
       PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
-      64 bytes from 8.8.8.8: icmp_seq=1 ttl=54 time=9.12 ms
-      64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=8.74 ms
-      64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=8.99 ms
-      64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=8.97 ms
+      64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=12.3 ms
+      64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=12.5 ms
+      64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=12.2 ms
 
       --- 8.8.8.8 ping statistics ---
-      4 packets transmitted, 4 received, 0% packet loss, time 3004ms
-      rtt min/avg/max/mdev = 8.741/8.957/9.124/0.180 ms
+      4 packets transmitted, 3 received, 25% packet loss, time 3005ms
+      rtt min/avg/max/mdev = 12.226/12.371/12.563/0.190 ms
 
       if ping succeeded, you're ready to proceed by logging in from the
       remote test system with ssh. Check the IP address from the ifconfig output
       below...
 
-      eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:26:F0
-                inet addr:192.168.4.9  Bcast:0.0.0.0  Mask:255.255.255.0
-                inet6 addr: fe80::208:ff:fe4a:26f0/64 Scope:Link
-                UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-                RX packets:857 errors:0 dropped:0 overruns:0 frame:0
-                TX packets:456 errors:0 dropped:0 overruns:0 carrier:0
+      eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:37:6B
+                inet addr:192.168.1.108  Bcast:192.168.1.255  Mask:255.255.255.0
+                UP BROADCAST RUNNING MULTICAST  MTU:1100  Metric:1
+                RX packets:1120 errors:0 dropped:7 overruns:0 frame:0
+                TX packets:259 errors:0 dropped:0 overruns:0 carrier:0
                 collisions:0 txqueuelen:1000
-                RX bytes:81307 (79.4 KiB)  TX bytes:57594 (56.2 KiB)
+                RX bytes:109668 (107.0 KiB)  TX bytes:35441 (34.6 KiB)
                 Interrupt:23 Base address:0xc000
+
+      All set: press enter to restart sshd (will run in background)
+
+      Connection to 192.168.1.108 closed by remote host.
+      Connection to 192.168.1.108 closed.
+      ```
+
+   NOTE: if the Conduit previously had a static address, you may lose connectivity after "press enter to enable DHCP." Also, even if the Conduit was formerly using DHCP, you might lose connectivity -- some routers assign new addresses on each DHCP cycle. In either case, you'll need to determine the new IP address at that point.
+
+   - **Via USB:** Run the script you've just copied over.
+
+      ```console
+      root@mtcdt:~# sh /tmp/conduit-stage1
+      All set: press enter to enable DHCP
+
+      udhcpc (v1.22.1) started
+      Sending discover...
+      Sending discover...
+      Sending select for 192.168.1.108...
+      Lease of 192.168.1.108 obtained, lease time 86400
+      /etc/udhcpc.d/50default: Adding DNS 192.168.1.1
+      checking ping
+      PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+      64 bytes from 8.8.8.8: icmp_seq=2 ttl=54 time=12.3 ms
+      64 bytes from 8.8.8.8: icmp_seq=3 ttl=54 time=12.5 ms
+      64 bytes from 8.8.8.8: icmp_seq=4 ttl=54 time=12.2 ms
+
+      --- 8.8.8.8 ping statistics ---
+      4 packets transmitted, 3 received, 25% packet loss, time 3005ms
+      rtt min/avg/max/mdev = 12.226/12.371/12.563/0.190 ms
+
+      if ping succeeded, you're ready to proceed by logging in from the
+      remote test system with ssh. Check the IP address from the ifconfig output
+      below...
+
+      eth0      Link encap:Ethernet  HWaddr 00:08:00:4A:37:6B
+                inet addr:192.168.1.108  Bcast:192.168.1.255  Mask:255.255.255.0
+                UP BROADCAST RUNNING MULTICAST  MTU:1100  Metric:1
+                RX packets:1120 errors:0 dropped:7 overruns:0 frame:0
+                TX packets:259 errors:0 dropped:0 overruns:0 carrier:0
+                collisions:0 txqueuelen:1000
+                RX bytes:109668 (107.0 KiB)  TX bytes:35441 (34.6 KiB)
+                Interrupt:23 Base address:0xc000
+
+      All set: press enter to restart sshd (will run in background)
 
       root@mtcdt:~#
       ```
+
+4. **On the management PC:** If the IP address of the Conduit changed, update the value of the CONDUIT variable.
+
+    ```bash
+    CONDUIT=192.168.1.108
+    ```
+
+    **_Remember to change the IP address to match what DHCP assigned!_**
 
 4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
 
     ```bash
     if [ X"$SSH_AUTH_SOCK" = X ]; then eval `ssh-agent` ; fi
     ssh-add {path}/keyfile
-    ssh root@192.168.4.9
     ```
-
-    **_Remember to change the IP address to match what DHCP assigned!_**
 
 5. **On the managment PC:** Verify that password-based login is disabled.
 
     ```console
-    $ SSH_AUTH_SOCK= ssh root@192.168.4.9
+    $ SSH_AUTH_SOCK= ssh root@$CONDUIT
     Permission denied (publickey,keyboard-interactive).
     ```
 
@@ -572,13 +611,33 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
 The remaining work is done using the PC and ssh. The USB cable is no longer needed. However we still need to get the unit connected to the jump host.
 
-1. Using the address noted above (`192.168.4.9` in this case), install prerequisites for Ansible, and copy the required files. Cut and paste the following.
+1. If you're restarting, set the value of the `CONDUIT` variable.
 
     ```bash
-    CONDUIT=192.168.4.9
+    CONDUIT=192.168.1.108
+    ```
+
+2. If you haven't done this yet, set up the shell variables that describe your jumphost.
+
+    ```bash
+    JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com # change this if needed
+    JUMPADMIN=tmm # this is your login on the jumphost
+    ```
+
+   You must have an SSH-enabled login on the jumphost, and your login must have `sudo` privileges.
+
+3. If you haven't done this yet, set up the variable that sets the pattern for user-names for the gateways. All gateways be named `${MYPREFIX}-xx-xx-xx-xx-xx-xx`, where MYPREFIX is given below, and "xx-xx-xx-xx-xx-xx" is changed to the primary Ethernet MAC address of the gateway.
+
+    ```bash
+    MYPREFIX=ttn-ithaca
+    ```
+
+2. Run the stage 2 script, which will set up the connection between the Conduit and the jump host, and assign a port name and a device name. Cut and paste the following.
+
+    ```bash
     scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp && \
-        ssh -tA root@$CONDUIT JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com \
-            JUMPADMIN=tmm JUMPPORT=22 MYPREFIX=ttn-nyc /tmp/conduit-stage2
+        ssh -tA root@$CONDUIT JUMPHOST=$JUMPHOST \
+            JUMPADMIN=$JUMPADMIN JUMPPORT=22 MYPREFIX=$MYPREFIX /tmp/conduit-stage2
     ```
 
     Note the instructions for connecting that are printed at the end of a successful run, for example:
@@ -613,6 +672,42 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
     Last login: Sun Nov  5 08:39:54 2017 from 192.168.4.6
     root@mtcdt:~#
     ```
+
+### Quick Reference for the experienced
+
+1. To set up for the scripts
+
+    ```bash
+    JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com
+    JUMPADMIN=your_login
+    ```
+
+2. To set up your organization
+
+    ```bash
+    MYPREFIX=ttn-ithaca
+    ```
+
+3. Repeat for each Conduit
+
+   1. Set the Conduit's local IP address
+
+
+       ```bash
+       CONDUIT=192.168.x.y
+       ```
+
+   2. To set up ssh and DHCP:
+
+       ```bash
+       roles/conduit/files/generate-conduit-stage1 ~/.ssh/ttn-ithaca-conduit.pub ~/.ssh/tmm-conduit.pub > /tmp/conduit-stage1 && SSH_AUTH_SOCK= scp -p /tmp/conduit-stage1 root@${CONDUIT}:/tmp && SSH_AUTH_SOCK= ssh root@${CONDUIT} sh /tmp/conduit-stage1
+       ```
+
+   5. To prepare jump host:
+
+       ```bash
+       SSH_AUTH_SOCK= ssh root@${CONDUIT} ; scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp &&     ssh -tA root@$CONDUIT JUMPHOST=$JUMPHOST         JUMPADMIN=$JUMPADMIN JUMPPORT=22 MYPREFIX=$MYPREFIX /tmp/conduit-stage2
+       ```
 
 ### Update configuration with final jumphost port
 
@@ -657,6 +752,7 @@ Follow this procedure.
     (Change `*ACCESS-CODE*` to the value you copied from the access code window.)
 
     You should see something like this as a result:
-    ```
+
+    ```console
     INFO Successfully logged in as your_ttn_name (your.email@example.com)
     ```
