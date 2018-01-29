@@ -703,21 +703,21 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
        roles/conduit/files/generate-conduit-stage1 ~/.ssh/ttn-ithaca-conduit.pub ~/.ssh/tmm-conduit.pub > /tmp/conduit-stage1 && SSH_AUTH_SOCK= scp -p /tmp/conduit-stage1 root@${CONDUIT}:/tmp && SSH_AUTH_SOCK= ssh root@${CONDUIT} sh /tmp/conduit-stage1
        ```
 
-   5. To prepare jump host:
+   3. To prepare jump host:
 
        ```bash
        SSH_AUTH_SOCK= ssh root@${CONDUIT} ; scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp &&     ssh -tA root@$CONDUIT JUMPHOST=$JUMPHOST         JUMPADMIN=$JUMPADMIN JUMPPORT=22 MYPREFIX=$MYPREFIX /tmp/conduit-stage2
        ```
 
-### Update configuration with final jumphost port
+### Add the new gateway to the Ansible database
 
 As described above, there are two steps:
 
-1. A file named <code>inventory/host_vars/<em>newhost</em>.yml</code> must be created (normally by copying one of the example files, and then editing it).
+1. You create an _inventory file_ for the new host named <code><strong><em>org-ttn-something</em></strong>/inventory/host_vars/<strong><em>newhost</em></strong>.yml</code>. (Normally you do this by copying one of the example files, or an existing file, and then editing the new file.)
 
-2. the name of the new gateway (i.e., <code><em>newhost</em></code>) must be added to the [`inventory/hosts` inventory file](#the-hosts-file).
+2. You add the the name of the new gateway's inventory file to the [`inventory/hosts` inventory file](#the-hosts-file). (For example, if the inventory file is named `newhost.yml`, then <code><em>newhost</em></code>) must be added to the `inventory/hosts` file. Usually you'll add this in the `[production]` section.
 
-You can check that the host is reachable from Ansible using <code>make TARGET=<em>newhost</em> ping</code>.
+After you've added the gateway, you can check that the gateway is reachable from Ansible using <code>make TARGET=<em>newhost</em> ping</code>.
 
 ### Use Ansible to complete the setup
 
@@ -728,8 +728,16 @@ To avoid spurious errors, we recommend that you start by [loading an access toke
 Then to get the gateway set up (or to modify it according to the latest inventory and host_vars settings):
 
 <pre>
-make TARGET=<strong><em>desiredhost</em></strong> apply
+make TTN_ORG=../<strong><em>org-ttn-something</em></strong> TARGET=<strong><em>desiredhost</em></strong> apply
 </pre>
+
+Be aware that
+
+<pre>
+make TTN_ORG=../<strong><em>org-ttn-something</em></strong> apply
+</pre>
+
+will try to synchronize all the gateways in the specified `TTN_ORG` database, operating in parallel. This may not be what you want to do!
 
 #### Sign in to The Things Network
 
