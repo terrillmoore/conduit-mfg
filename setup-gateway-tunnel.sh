@@ -31,11 +31,27 @@ if [ X"$KEEPALIVE" = X ]; then
 	_error "KEEPALIVE not defined -- see instructions"
 fi
 if [ X"$MYNAME" = X ]; then
-	_error "MYNAME no defined -- see instructions"
+	_error "MYNAME not defined -- see instructions"
+fi
+if [ X"$MYPUBKEY" = X ]; then
+	_error "MYPUBKEY not defined -- see instructions"
+elif [ ! -f "$MYPUBKEY" ]; then
+	_error "MYPUBKEY not readable: $MYPUBKEY"
 fi
 
 # get the date right
 ntpdate -ub pool.ntp.org || _error "Couldn't set date/time"
+
+# no point in doing this without ssh set up
+if [ ! -d ~root/.ssh ]; then
+	mkdir -p 700 ~root/.ssh || _error "Couldn't set up .ssh dir"
+fi
+rm -rf ~root/.ssh/authorized_keys
+if [ ! -f ~root/.ssh/authorized_keys ]; then
+	touch ~root/.ssh/authorized_keys || _error "Can't create authorized_keys"
+	chmod 700 ~root/.ssh/authorized_keys || _error "Can't chmod authorized keys"
+fi
+cat "$MYPUBKEY" >> ~root/.ssh/authorized_keys
 
 # set up the parameters for the ssh setup
 echo "Set up ssh tunnel"

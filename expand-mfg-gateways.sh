@@ -80,6 +80,10 @@ Switches:
 	-u #		Set the starting user number. # must be in 
 			[20000..29999].
 
+	-k {keyfile}	specify the public key to be used for logging into
+			the gateways (at least initially). Default:
+			$OPTPUBKEY_DEFAULT.
+
 .
 }
 
@@ -105,6 +109,8 @@ OPTORGID="$OPTORGID_DFLT"
 OPTOWNER_DFLT="Tompkins County"
 OPTOWNER="$OPTOWNER_DFLT"
 OPTPASSWD="LWlC8bY6"
+declare -r OPTPUBKEY_DEFAULT=~/.ssh/tmm-conduit.pub
+OPTPUBKEY="${OPTPUBKEY_DEFAULT}"
 declare -i OPTSCANONLY=0
 declare -i OPTUSER
 
@@ -119,7 +125,7 @@ OPTSTART_PERSONAL[OWNER]=1
 
 # scan args.
 NEXTBOOL=1
-while getopts Dnhi:I:j:m:O:p:su:v c
+while getopts Dnhi:I:j:k:m:O:p:su:v c
 do
 	if [ $NEXTBOOL -eq -1 ]; then
 		NEXTBOOL=0
@@ -140,6 +146,9 @@ do
 	I)	OPTORGID="$OPTARG";;
 	i)	_setstart $c OWNER "${OPTARG:0:1}" "${OPTARG:1}";;
 	j)	OPTJHFQDN="$OPTARG";;
+	k)	OPTPUBKEY="$OPTARG"
+		test -f "$OPTPUBKEY" || _error "-$c: can't read key file: $OPTARG"
+		;;
 	m)	_setstart $c MCCI "${OPTARG:0:1}" "${OPTARG:1}";;
 	O)	OPTOWNER="$OPTARG";;
 	p)	OPTPASSWD="$OPTARG";;
@@ -174,6 +183,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	-v sCREATE_JUMPHOST_USER="$PDIR/create-jumphost-user.sh" \
 	-v optVerbose="$OPTVERBOSE" \
 	-v sSETUP_GATEWAY_TUNNEL="$PDIR/setup-gateway-tunnel.sh" \
+	-v sPUBKEY="${OPTPUBKEY}" \
     '
     BEGIN { 
         nPersonal = 0;
@@ -240,7 +250,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 		$iGatewayID = tolower($iGatewayID)
 	}
 
-	# fetch the public key
+	# fetch the gateway public key
 	if ($iPublicKey == "" || $iPublicKey == "-") {
 		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub" 
 		cmdstat = cmd | getline sPublicKey;
@@ -268,7 +278,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 		$iEUI64 = tolower($iEUI64);
 	}
 
-	# now create the user on the jumphost
+	# create the gateway user on the jumphost
 	if (optScanOnly == 0) {
 		cmd = sCREATE_JUMPHOST_USER 
 		if (optVerbose > 1) {
@@ -290,28 +300,35 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	}
 
 	# next, load up the tunnel to the jumphost on the gateway
-	printf("$iTunnel=%s $iUserNum=%s $iKeepalive=%s $iGatewayID=%s $iOrgID=%s\n",
-		$iTunnel, $iUserNum, $iKeepalive, $iGatewayID, $iOrgID) > "/dev/stderr";
+	# printf("$iTunnel=%s $iUserNum=%s $iKeepalive=%s $iGatewayID=%s $iOrgID=%s\n",
+	#	$iTunnel, $iUserNum, $iKeepalive, $iGatewayID, $iOrgID) > "/dev/stderr";
 
 	if (optScanOnly == 0 && $iTunnel != "OK" &&
 	    $iUserNum != "" && $iKeepalive != "" &&
 	    $iGatewayID != "" && $iOrgID != "") {
 		# create the rev ssh tunnel on the target
-		cmd = "sshpass -p" sPASSWD " ";
+		cmd = ""
+		# cmd = cmd "sshpass -p" sPASSWD " ";
+		# cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
+		# cmd = cmd "rm -f /tmp/setup-gateway-tunnel /tmp/authorized_keys && "
+		cmd = cmd "sshpass -p" sPASSWD " ";
 		cmd = cmd "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
 		cmd = cmd sSETUP_GATEWAY_TUNNEL " root@" $iIP ":/tmp/setup-gateway-tunnel && ";
 		cmd = cmd "sshpass -p" sPASSWD " ";
-		cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " ";
-		cmd = cmd sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" sh /tmp/setup-gateway-tunnel",
+		cmd = cmd "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
+		cmd = cmd sPUBKEY " root@" $iIP ":/tmp/authorized_keys && ";
+		cmd = cmd "sshpass -p" sPASSWD " ";
+		cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
+		cmd = cmd sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" MYPUBKEY=/tmp/authorized_keys sh /tmp/setup-gateway-tunnel",
 				sJhFqdn, $iUserNum, $iKeepalive, $iGatewayID);
 
 		if (optVerbose != 0) {
 			printf("%s\n", cmd) > "/dev/stderr";
 		}
 
-		cmdstat = cmd | getline sOK;
+		cmdstat = cmd | getline sIgnore;
 		close(cmd);
-		if (cmdstat <= 0 || sOK != "OK") {
+		if (cmdstat <= 0) {
 			printf("%s: can'\''t setup tunnel\n", $2) > "/dev/stderr";
 			$iTunnel = "NG"
 		} else {
