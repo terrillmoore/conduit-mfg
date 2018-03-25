@@ -287,7 +287,7 @@ if [ X"${OPTHOSTFILE}" != X ]; then
 	echo "[new]" 
 
 	_getgateways "$@" | while >>${HOSTFILE} IFS=$'\t' read GatewayID UserNum Keepalive GatewayName ; do
-		echo "${GatewayID}.yml"
+		printf "%s.yml\t#%s\n" "${GatewayID}" "${GatewayName}"
     	done
 	} >> "${HOSTFILE}"
 fi
