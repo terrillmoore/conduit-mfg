@@ -20,7 +20,7 @@
 #
 
 PNAME=$(basename $0)
-PPATH=$(dirname $0)
+PDIR=$(dirname $0)
 
 # output to terminal, but only if verbose.
 function _verbose {
@@ -65,15 +65,20 @@ Switches:
 
 	-O {ownername}	Set owner name to "ownername", default "$OPTOWNER_DFLT"
 
-	-mi #		Reserve first # infrastructure gateways for MCCI stock.
+	-mi#		Reserve first # infrastructure gateways for MCCI stock.
 
-	-mp #		Reserve first # personal gateways for MCCI stock.
+	-mp#		Reserve first # personal gateways for MCCI stock.
 
-	-ii #		Set the starting index of customer infrastructure
+	-ii#		Set the starting index of customer infrastructure
 			gateways to #.
 
-	-ip #		set the starting index of cusotmer personal gateways
+	-ip#		set the starting index of cusotmer personal gateways
 			to #.
+
+	-p *		set the initial root password to arg.
+
+	-u #		Set the starting user number. # must be in 
+			[20000..29999].
 
 .
 }
@@ -87,15 +92,23 @@ function _setstart {
 }
 
 #### argument scanning:  usage ####
-USAGE="${PNAME} -[Dhv I* O* ii# ip# mi# mp#]"
+USAGE="${PNAME} -[Dhv I* j* k* O* ii# ip# mi# mp# p* s u#]"
 
 OPTDEBUG=0
 OPTVERBOSE=0
+declare -r OPTJHUSER_DEFAULT="$USER"
+OPTJHUSER="$OPTJHUSER_DEFAULT"
+declare -r OPTJHFQDN_DEFAULT="ec2-54-221-216-139.compute-1.amazonaws.com"
+OPTJHFQDN="$OPTJHFQDN_DEFAULT"
 OPTORGID_DFLT="ttn-ithaca"
 OPTORGID="$OPTORGID_DFLT"
 OPTOWNER_DFLT="Tompkins County"
 OPTOWNER="$OPTOWNER_DFLT"
+OPTPASSWD="LWlC8bY6"
+declare -i OPTSCANONLY=0
+declare -i OPTUSER
 
+# set up the arrays OPTSTART_INFRA and OPTSTART_PERSONAL
 declare -A OPTSTART_INFRA
 declare -A OPTSTART_PERSONAL
 
@@ -104,8 +117,9 @@ OPTSTART_PERSONAL[MCCI]=0
 OPTSTART_INFRA[OWNER]=1
 OPTSTART_PERSONAL[OWNER]=1
 
+# scan args.
 NEXTBOOL=1
-while getopts Dnhi:I:m:O:v c
+while getopts Dnhi:I:j:m:O:p:su:v c
 do
 	if [ $NEXTBOOL -eq -1 ]; then
 		NEXTBOOL=0
@@ -125,8 +139,12 @@ do
 	n)	NEXTBOOL=-1;;
 	I)	OPTORGID="$OPTARG";;
 	i)	_setstart $c OWNER "${OPTARG:0:1}" "${OPTARG:1}";;
+	j)	OPTJHFQDN="$OPTARG";;
 	m)	_setstart $c MCCI "${OPTARG:0:1}" "${OPTARG:1}";;
 	O)	OPTOWNER="$OPTARG";;
+	p)	OPTPASSWD="$OPTARG";;
+	s)	OPTSCANONLY=$NEXTBOOL;;
+	u)	OPTJHUSER="$OPTARG";;
 	v)	OPTVERBOSE=$NEXTBOOL;;
 	\?)	echo "$USAGE"
 		exit 1;;
@@ -145,10 +163,18 @@ done
 ### do the work ###
 awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	-v nMCCIpersonal="${OPTSTART_PERSONAL[MCCI]}" \
-	-v iPersonal=${OPTSTART_INFRA[OWNER]} \
+	-v iPersonal=${OPTSTART_PERSONAL[OWNER]} \
 	-v iInfra=${OPTSTART_INFRA[OWNER]} \
 	-v sORGID="$OPTORGID" \
-	-v sORGNAME="$OPTOWNER" '
+	-v sORGNAME="$OPTOWNER" \
+	-v sPASSWD="$OPTPASSWD" \
+	-v sJhUser="$OPTJHUSER" \
+	-v sJhFqdn="$OPTJHFQDN" \
+	-v optScanOnly="$OPTSCANONLY" \
+	-v sCREATE_JUMPHOST_USER="$PDIR/create-jumphost-user.sh" \
+	-v optVerbose="$OPTVERBOSE" \
+	-v sSETUP_GATEWAY_TUNNEL="$PDIR/setup-gateway-tunnel.sh" \
+    '
     BEGIN { 
         nPersonal = 0;
         nInfra = 0;
@@ -156,34 +182,137 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
         OFS="\t" 
         if (sMCCIORGID == "") {
             sMCCIORGID = sORGID;
+	iType = 1
+	iIP = 2
+	iMac = 3
+	iGatewayName = 4
+	iGatewayID = 5
+	iOrgID = 6
+	iPublicKey = 7
+	iUserNum = 8
+	iKeepalive = 9
+	iEUI64 = 10
+	iTunnel = 11
         }
     }
     (NR == 1) {
-        $4 = "Gateway Name"
-        $5 = "Gateway ID"
+        $iGatewayName = "GatewayName"
+        $iGatewayID = "GatewayID"
+	$iOrgID = "OrgID"
+	$iPublicKey = "PublicKey"
+	$iUserNum = "UserNum"
+	$iKeepalive = "Keepalive"
+	$iEUI64 = "EUI64"
+	$iTunnel = "TunnelStatus"
     }
-    (NR > 1) { 
-        mac = $3
+    (NR > 1) {
+	# add the mac address
+        mac = tolower($iMac);
         gsub(/:/, "-", mac); 
-        if ($1 == "Conduit AP") {
-            if (nPersonal < nMCCIpersonal) {
-                $4 = "MCCI AP " mac;
-                $5 = sMCCIORGID "-" mac;
-            } else {
-                $4 = sORGNAME " Personal #" iPersonal++
-                $5 = sORGID "-" mac;
-            }
-            ++nPersonal; 
-        } else {
-            if (nInfra < nMCCIinfra) {
-                $4 = "MCCI " mac;
-                $5 = sMCCIORGID "-" mac;
-            } else {
-                $4 = sORGNAME " #" iInfra++
-                $5 = sORGID "-" mac;
-            }
-            ++nInfra;
+
+	if ($iOrgID == "") {
+		$iOrgID = tolower(sORGID "-gateways");
+	}
+
+	if ($iGatewayName == "") {
+		if ($iType == "Conduit AP") {
+			if (nPersonal < nMCCIpersonal) {
+				$iGatewayName = "MCCI AP " mac;
+				$iGatewayID = tolower(sMCCIORGID "-" mac);
+			} else {
+				$iGatewayName = sORGNAME " Personal #" iPersonal++
+				$iGatewayID = tolower(sORGID "-" mac);
+			}
+			++nPersonal; 
+		} else {
+			if (nInfra < nMCCIinfra) {
+				$iGatewayName = "MCCI " mac;
+				$iGatewayID = tolower(sMCCIORGID "-" mac);
+			} else {
+				$iGatewayName = sORGNAME " #" iInfra++
+				$iGatewayID = tolower(sORGID "-" mac);
+			}
+			++nInfra;
+		}
         }
+	
+	if ($iGatewayID != "") {
+		$iGatewayID = tolower($iGatewayID)
+	}
+
+	# fetch the public key
+	if ($iPublicKey == "" || $iPublicKey == "-") {
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub" 
+		cmdstat = cmd | getline sPublicKey;
+		close(cmd);
+		if (cmdstat <= 0) {
+			printf("%s: can'\''t get key\n", $2) > "/dev/stderr";
+			$iPublicKey = "-";
+		} else {
+			$iPublicKey = sPublicKey;
+		}
+	}
+
+	# fetch the lora EUI64
+	if ($iEUI64 == "") {
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " mts-io-sysfs show lora/eui" 
+		cmdstat = cmd | getline sEUI64;
+		close(cmd);
+		if (cmdstat <= 0) {
+			printf("%s: can'\''t get EUI64\n", $2) > "/dev/stderr";
+		} else {
+			$iEUI64 = tolower(sEUI64);
+		}
+	} else {
+		$iEUI64 = tolower($iEUI64);
+	}
+
+	# now create the user on the jumphost
+	if (optScanOnly == 0) {
+		cmd = sCREATE_JUMPHOST_USER 
+		if (optVerbose > 1) {
+			cmd = cmd " -v";
+		}
+		cmd = cmd " -k \"" $iPublicKey "\" -j \"" sJhFqdn "\" -u \"" sJhUser "\" " $iGatewayID " " $iOrgID
+		if (optVerbose != 0) {
+			printf("%s\n", cmd) > "/dev/stderr";
+		}
+		cmdstat = cmd | getline sUserNum sKeepalive;
+		close(cmd);
+		if (cmdstat <= 0) {
+			printf("%s: can'\''t get UserNumber\n", $2) > "/dev/stderr";
+		} else {
+			$iUserNum = sUserNum;
+			$iKeepalive = sKeepalive;
+		}
+	}
+
+	# next, load up the tunnel to the jumphost on the gateway
+	if (optScanOnly == 0 && $iTunnel != "OK" &&
+	    $iUserNum != "" && $iKeepalive != "" &&
+	    $iGatewayID != "" && $iOrgID != "") {
+		# create the rev ssh tunnel on the target
+		cmd = "sshpass -p" sPASSWD " ";
+		cmd = cmd "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
+		cmd = cmd sSETUP_GATEWAY_TUNNEL " root@" $iIP ":/tmp/setup-gateway-tunnel && ";
+		cmd = cmd "sshpass -p" sPASSWD " ";
+		cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " ";
+		cmd = cmd sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" sh /tmp/setup-gateway-tunnel",
+				sJhFqdn, $iUserNum, $iKeepalive, $iGatewayID);
+
+		if (optVerbose != 0) {
+			printf("%s\n", cmd) > "/dev/stderr";
+		}
+
+		cmdstat = cmd | getline sOK;
+		close(cmd);
+		if (cmdstat <= 0 || sOK != "OK") {
+			printf("%s: can'\''t setup tunnel\n", $2) > "/dev/stderr";
+			$iTunnel = "NG"
+		} else {
+			$iTunnel = "OK"
+		}
+	}
     }
     {print}
     ' "$@"
