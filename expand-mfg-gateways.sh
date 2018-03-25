@@ -261,6 +261,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 		if (cmdstat <= 0) {
 			printf("%s: can'\''t get EUI64\n", $2) > "/dev/stderr";
 		} else {
+			gsub(/[\t ]/, "", sEUI64);
 			$iEUI64 = tolower(sEUI64);
 		}
 	} else {
@@ -277,17 +278,21 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 		if (optVerbose != 0) {
 			printf("%s\n", cmd) > "/dev/stderr";
 		}
-		cmdstat = cmd | getline sUserNum sKeepalive;
+		cmdstat = cmd | getline sResult;
 		close(cmd);
 		if (cmdstat <= 0) {
 			printf("%s: can'\''t get UserNumber\n", $2) > "/dev/stderr";
 		} else {
-			$iUserNum = sUserNum;
-			$iKeepalive = sKeepalive;
+			split(sResult, tResult, " ");
+			$iUserNum = tResult[1];
+			$iKeepalive = tResult[2];
 		}
 	}
 
 	# next, load up the tunnel to the jumphost on the gateway
+	printf("$iTunnel=%s $iUserNum=%s $iKeepalive=%s $iGatewayID=%s $iOrgID=%s\n",
+		$iTunnel, $iUserNum, $iKeepalive, $iGatewayID, $iOrgID) > "/dev/stderr";
+
 	if (optScanOnly == 0 && $iTunnel != "OK" &&
 	    $iUserNum != "" && $iKeepalive != "" &&
 	    $iGatewayID != "" && $iOrgID != "") {
