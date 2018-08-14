@@ -77,7 +77,7 @@ Switches:
 			Default is ${OPTHOSTFILE_DEFAULT}.
 
 Notes:
-	The database file is multiple times by awk, so input must be
+	The database file is read multiple times by awk, so input must be
 	a regular file.
 
 .
