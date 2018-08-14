@@ -68,10 +68,10 @@ Switches:
 			is to include all gateways.
 
 	-O {orgdir}	Set output directory; default is ${OPTORGDIR_DEFAULT}.
-			Files are created as 
+			Files are created as
 				{orgdir}/inventory/host_vars/{gwid}.yml
 
-	-H {hostfile}	Create hostfile fragment at 
+	-H {hostfile}	Create hostfile fragment at
 				{orgdir}/inventory/{hostfile}
 			Section will be "[new]".
 			Default is ${OPTHOSTFILE_DEFAULT}.
@@ -216,9 +216,9 @@ function _getgateways {
 awk 	-v optVerbose="$OPTVERBOSE" \
 	-v sINCLUDE_PATTERN="${OPTINCLUDEPATTERN}" \
     '
-    BEGIN { 
-        FS="\t"; 
-        OFS="\t" 
+    BEGIN {
+        FS="\t";
+        OFS="\t"
 	iType = 1
 	iIP = 2
 	iMac = 3
@@ -237,7 +237,7 @@ awk 	-v optVerbose="$OPTVERBOSE" \
     (NR > 1) {
 	# add the mac address
         mac = tolower($iMac);
-        gsub(/:/, "-", mac); 
+        gsub(/:/, "-", mac);
 
 	if ($iGatewayID ~ sINCLUDE_PATTERN) {
 		printf("%s\t%u\t%u\t%s\n", $iGatewayID, $iUserNum, $iKeepalive, $iGatewayName);
@@ -279,15 +279,16 @@ _getgateways "$@" | while IFS=$'\t' read GatewayID UserNum Keepalive GatewayName
 		-e 's/${UserNum}/'"${UserNum}"'/g' \
 		-e 's/${Keepalive}/'"${Keepalive}"'/g' \
 		-e 's/${GatewayName}/'"${GatewayName}"'/g' \
-		> ${OUTFILE}		    
+		> ${OUTFILE}
 	done
 
 if [ X"${OPTHOSTFILE}" != X ]; then
 	{
-	echo "[new]" 
+	printf "\n# move these to the test section above\n"
+	printf "[test]\n"
 
 	_getgateways "$@" | while >>${HOSTFILE} IFS=$'\t' read GatewayID UserNum Keepalive GatewayName ; do
-		printf "%s.yml\t#%s\n" "${GatewayID}" "${GatewayName}"
+		printf "%s\t#%s\n" "${GatewayID}" "${GatewayName}"
     	done
 	} >> "${HOSTFILE}"
 fi

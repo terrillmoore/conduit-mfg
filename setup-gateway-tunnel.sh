@@ -42,16 +42,40 @@ fi
 # get the date right
 ntpdate -ub pool.ntp.org || _error "Couldn't set date/time"
 
+function _mkdir { # $1: path. $2 mode $3 owner $4 group
+	if [ ! -d "$1" ]; then
+		mkdir -m $2 "$1" || _error "Can't create dir: $1"
+		chown $3.$4 "$1" || _error "Can't set permissions: $1"
+	fi
+}
 # no point in doing this without ssh set up
+_mkdir /var/config/home 755 root root
+_mkdir /var/config/home/root 700 root root
+_mkdir /var/config/home/root/.ssh 700 root root
+
+if [ ! -f /var/config/home/root/.ssh/authorized_keys ]; then
+	if [ -f ~root/.ssh/authorized_keys ]; then
+		cat ~root/.ssh/authorized_keys >/var/config/home/root/.ssh/authorized_keys
+	else
+		touch /var/config/home/root/.ssh/authorized_keys || _error "Can't create authorized_keys"
+	fi
+	chmod 700 /var/config/home/root/.ssh/authorized_keys || _error "Can't chmod authorized keys"
+fi
+cat "$MYPUBKEY" >> /var/config/home/root/.ssh/authorized_keys
+
+# if no ~root/.ssh, link it
+# if ~root/.ssh and not a link, rm and link it
+# if ~root/.ssh and a link, simply relink it
 if [ ! -d ~root/.ssh ]; then
-	mkdir -p 700 ~root/.ssh || _error "Couldn't set up .ssh dir"
+	ln -fs /var/config/home/root/.ssh ~root || _error "Can't add symlink to ~root/.ssh"
+elif [ ! -L ~root/.ssh ]; then
+	# somewhat unpleasant and not atomic,but...
+	mv ~root/.ssh ~root/.ssh.old || _error "Can't move ~root/.ssh"
+	ln -s /var/config/home/root/.ssh ~root || _error "Can't replace to ~root/.ssh"
+else
+	# atomic update of link, maybe no change.
+	ln -fs /var/config/home/root/.ssh ~root || _error "Can't update symlink to ~root/.ssh"
 fi
-rm -rf ~root/.ssh/authorized_keys
-if [ ! -f ~root/.ssh/authorized_keys ]; then
-	touch ~root/.ssh/authorized_keys || _error "Can't create authorized_keys"
-	chmod 700 ~root/.ssh/authorized_keys || _error "Can't chmod authorized keys"
-fi
-cat "$MYPUBKEY" >> ~root/.ssh/authorized_keys
 
 # set up the parameters for the ssh setup
 echo "Set up ssh tunnel"

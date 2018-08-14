@@ -77,7 +77,7 @@ Switches:
 
 	-p *		set the initial root password to arg.
 
-	-u #		Set the starting user number. # must be in 
+	-u #		Set the starting user number. # must be in
 			[20000..29999].
 
 	-k {keyfile}	specify the public key to be used for logging into
@@ -96,7 +96,7 @@ function _setstart {
 }
 
 #### argument scanning:  usage ####
-USAGE="${PNAME} -[Dhv I* j* k* O* ii# ip# mi# mp# p* s u#]"
+USAGE="${PNAME} -[Dhv I* j* k* O* ii# ip# mi# mp# p* s u#] {inputDB} ..."
 
 OPTDEBUG=0
 OPTVERBOSE=0
@@ -163,6 +163,8 @@ done
 #### get rid of scanned options ####
 shift	`expr $OPTIND - 1`
 
+test $# -ne 0 || _error "must provide at least one argument"
+
 ### log some info ###
 for i in MCCI OWNER ; do
 	_debug "OPTSTART_INFRA[$i]:" "${OPTSTART_INFRA[$i]}"
@@ -185,11 +187,11 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	-v sSETUP_GATEWAY_TUNNEL="$PDIR/setup-gateway-tunnel.sh" \
 	-v sPUBKEY="${OPTPUBKEY}" \
     '
-    BEGIN { 
+    BEGIN {
         nPersonal = 0;
         nInfra = 0;
-        FS="\t"; 
-        OFS="\t" 
+        FS="\t";
+        OFS="\t"
         if (sMCCIORGID == "") {
             sMCCIORGID = sORGID;
 	iType = 1
@@ -218,7 +220,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
     (NR > 1) {
 	# add the mac address
         mac = tolower($iMac);
-        gsub(/:/, "-", mac); 
+        gsub(/:/, "-", mac);
 
 	if ($iOrgID == "") {
 		$iOrgID = tolower(sORGID "-gateways");
@@ -233,7 +235,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 				$iGatewayName = sORGNAME " Personal #" iPersonal++
 				$iGatewayID = tolower(sORGID "-" mac);
 			}
-			++nPersonal; 
+			++nPersonal;
 		} else {
 			if (nInfra < nMCCIinfra) {
 				$iGatewayName = "MCCI " mac;
@@ -245,14 +247,14 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 			++nInfra;
 		}
         }
-	
+
 	if ($iGatewayID != "") {
 		$iGatewayID = tolower($iGatewayID)
 	}
 
 	# fetch the gateway public key
 	if ($iPublicKey == "" || $iPublicKey == "-") {
-		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub" 
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub"
 		cmdstat = cmd | getline sPublicKey;
 		close(cmd);
 		if (cmdstat <= 0) {
@@ -265,7 +267,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 
 	# fetch the lora EUI64
 	if ($iEUI64 == "") {
-		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " mts-io-sysfs show lora/eui" 
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " mts-io-sysfs show lora/eui"
 		cmdstat = cmd | getline sEUI64;
 		close(cmd);
 		if (cmdstat <= 0) {
@@ -280,7 +282,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 
 	# create the gateway user on the jumphost
 	if (optScanOnly == 0) {
-		cmd = sCREATE_JUMPHOST_USER 
+		cmd = sCREATE_JUMPHOST_USER
 		if (optVerbose > 1) {
 			cmd = cmd " -v";
 		}
@@ -307,19 +309,14 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	    $iUserNum != "" && $iKeepalive != "" &&
 	    $iGatewayID != "" && $iOrgID != "") {
 		# create the rev ssh tunnel on the target
+		sshpasspfx = "sshpass -p" sPASSWD " ";
+		sshpfx = sshpasspfx "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
+		scppfx = sshpasspfx "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
+
 		cmd = ""
-		# cmd = cmd "sshpass -p" sPASSWD " ";
-		# cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
-		# cmd = cmd "rm -f /tmp/setup-gateway-tunnel /tmp/authorized_keys && "
-		cmd = cmd "sshpass -p" sPASSWD " ";
-		cmd = cmd "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
-		cmd = cmd sSETUP_GATEWAY_TUNNEL " root@" $iIP ":/tmp/setup-gateway-tunnel && ";
-		cmd = cmd "sshpass -p" sPASSWD " ";
-		cmd = cmd "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
-		cmd = cmd sPUBKEY " root@" $iIP ":/tmp/authorized_keys && ";
-		cmd = cmd "sshpass -p" sPASSWD " ";
-		cmd = cmd "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
-		cmd = cmd sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" MYPUBKEY=/tmp/authorized_keys sh /tmp/setup-gateway-tunnel",
+		cmd = cmd scppfx sSETUP_GATEWAY_TUNNEL " root@" $iIP ":/tmp/setup-gateway-tunnel && ";
+		cmd = cmd scppfx sPUBKEY " root@" $iIP ":/tmp/authorized_keys && ";
+		cmd = cmd sshpfx sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" MYPUBKEY=/tmp/authorized_keys sh /tmp/setup-gateway-tunnel",
 				sJhFqdn, $iUserNum, $iKeepalive, $iGatewayID);
 
 		if (optVerbose != 0) {
@@ -329,7 +326,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 		cmdstat = cmd | getline sIgnore;
 		close(cmd);
 		if (cmdstat <= 0) {
-			printf("%s: can'\''t setup tunnel\n", $2) > "/dev/stderr";
+			printf("%s: can'\''t setup tunnel: status %d\n", $2, cmdstat) > "/dev/stderr";
 			$iTunnel = "NG"
 		} else {
 			$iTunnel = "OK"
