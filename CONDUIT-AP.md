@@ -8,13 +8,13 @@
 
 3. Rename the downloaded file `ttni-base-image-mtcap-upgrade-withboot.bin`.  For example, the following bash command will do this.
 
-   ```bash
+   ```shell
    mv ttni-base-image-mtcap-upgrade-withboot.bin{.txt,}
    ```
 
-2. Connect the Conduit AP to your engineering network as 192.168.2.1
+4. Connect the Conduit AP to your engineering network as 192.168.2.1
 
-3. Log in to the Conduit:
+5. Log in to the Conduit:
 
    ```console
    $ ssh root@192.168.2.1
@@ -26,16 +26,17 @@
 
    _The purpose of this login is mainly to verify that things are properly connected._
 
-4. **On your manufacturing PC:** Copy the image file to the Conduit.
+6. **On your manufacturing PC:** Copy the image file to the Conduit.
 
-   ```bash
+   ```shell
    scp ttni-base-image-mtcap-upgrade-withboot.bin root@192.168.2.1:
    ```
+
    The trailing '`:`' is very important!
 
-5. **On the Conduit:** start the upgrade procedure by entering the following comand:
+7. **On the Conduit:** start the upgrade procedure by entering the following comand:
 
-   ```bash
+   ```shell
    /usr/sbin/mlinux-firmware-upgrade /home/root/ttni-base-image-mtcap-upgrade-withboot.bin
    ```
 
@@ -59,4 +60,3 @@
    root@mtcap:~# Connection to 192.168.2.1 closed by remote host.
    Connection to 192.168.2.1 closed
    ```
-
