@@ -78,7 +78,10 @@ Switches:
 
 Notes:
 	The database file is read multiple times by awk, so input must be
-	a regular file.
+	a regular file. The gateways database is as created by
+	expand-mfg-gateways.sh, also in this directory.
+
+	Therefore, this script should be run after expand-mfg-gateways.sh.
 
 .
 }
@@ -155,10 +158,17 @@ altitude: -1
 forwarder_variant: mp
 forwarder_version: 3.0.20-r1
 
-# the authorized_keys (public) for getting to this host
-host_authorized_keys:
- - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDvnl9QPdC8KpZBchK7VaUAEX4XONfLks9VO1RL35XIGXDDyfg8eyk5cLy8k9oE1hFRYtdOdrnofUYHsr3GBAOzQdnrnh2ujMOCm0LP4G5w1UjjYRPFHzX2hnnllKnswHn3dbdopl6wLezZP79lv2YzlJ2e4BdSq56WmGb3iiTG21MOGuMBhovXMqwalaqG3ZuJg8PhYDW226lExotgkWKQzhjFQiG0t2OgqbGJB/Jhyq45YemZm65m2kjKW7BrDRXcvfelx2B6T69pjjT1xkyOR37nApMleAzSrmxOX3aIWzuKHwbUdr4WN6wVqYlMFrs1vFG9+XRf/A4JnbpCSl/njx9iZcamqk3G7CKQste/iOlfccxB6YR16riX6mU43Tq/mPUWKXHu6dT3aebZeJDgSU34GS+sh/vvmqS8p6OqGNpPUQDTupA9YGHZhFr5bdf/jiXsDWY0fIuHhBZMcOYytycPxLGdyw2yR1Gi5WIgTr5XDcXQNR5NjZcoC0oxBzHsY7i7VTL+yg1v1rcyOdE/Fqxzc6EswL4Uc8ODG31cwwo1Aow3yy/qxrJEuOAD19QCgvDvjP6EChzZxrJX3PAE1JFlFUZGmGnOpLkTiKVzStTqBTha6K5etfm0uWWqyTPoqdsGdPgkJ6etIPZMQ3S12VdO3Fr8CYO+D/N1k5V8Aw== tmm/Conduits'
- - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCuqUXzdOA/uXjLs0581rz+pjtxfb6eoCXCIhsb8rAJK1jnbzCCxUx4bJaMGh/rWyD+19CMkKJJ3OTv0h+SEMvkeNcpXgR2bbS5qr5S20J0lXO9k15KheMz50u7fDLdW6qmFk2FY75bzJ6U9vrOxdt2xYXbtnJy0AEL+Db0SSUJY7bcYJpPmpHFaQ1sm3UNx7OmixxjoUcDcx/nOK/TDzh25uLXVYMItW6EINSjinoi9ZKk4lMd3JAL4wT9HW3qiTmcCP/YnETjDA/u/hW5MjQXAGFy9E8v40x+WTpu5XS0JOg3C4a0QsizJIwiYBDduxqDF5Z22sJxfCvDHU3F3RVSoXom6Rt9+AQ7xPBZuzSFFp/185/EsiM4p0NGKI/tk7KuEK00UrCHvkx7ghgw5Dwsd4je6Cmq4XijQtA7iYfDnIf8TQWdh6axQAzKWiBH0EYrJXJa8QZzy4X9IwHsNiLCL7SUQH8ONJME5B6yWp24tmjx2I1ulayxxgB6p5OYVlH8vLVo3lIrue5SrpL2iaotjxwI3yaX5Hy7JXRencw9R6nO2VEoN8U0DJOzZ5VdCW5CuvqHYP7esbsFnY3Jmyp3hlSpQRyIsNDHCEjU7KnMdXxIMdv/ghL4YO7tj+QV8CaFZvVPujAD6lic6HW4xUqyEkHAN3T2sRb8C/q/rhDcyw== ttni Conduit admin'
+# the complete list of collaborators including the owner
+gateway_collaborators:
+  # - { username: jchonig, rights: [ gateway:status, gateway:delete ] }
+  - { username: jchonig }
+  - { username: terrillmoore }
+  - { username: "cvb-mcci" }
+#  - { username: etsarnas }
+
+# add the owner's or local admin's SSH public key here.
+#authorized_keys:
+#  - ''
 .
 }
 
