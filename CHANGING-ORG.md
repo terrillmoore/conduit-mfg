@@ -7,6 +7,7 @@
 - [If no jumphost](#if-no-jumphost)
 - [If using a jumphost](#if-using-a-jumphost)
 - [Moving to a new jumphost](#moving-to-a-new-jumphost)
+- [Clean up the old user](#clean-up-the-old-user)
 
 <!-- /TOC -->
 
@@ -107,3 +108,12 @@ This process is similar. _(I've not yet tested this!)_
 9. Wait a minute for the gateway to come up; return to your dev system.
 10. Verify that it's up: `make TTN_ORG={neworg} TARGET={newname} ping`
 11. Set up for TTN: `make TTN_ORG={neworg} TARGET={newname} apply TAGS=ttn`
+
+## Clean up the old user
+
+This is tricky, because if you've done a rename on the same jumphost, `userdel` will think that the old user is still logged it (it matches by UID, not by login name). So you have to get the gateway to temporarily log out and log back in. Easiest way is to reboot it.
+
+1. log into the jumphost
+2. log into the gateway
+3. `shutdown -r now`
+4. back at the jumphost, repeatedly `sudo userdel -r {oldname}` until it no longer says `userdel: user ttn-ithaca-00-08-00-4a-3d-1b is currently logged in`. This will take aobut 30 seconds.
