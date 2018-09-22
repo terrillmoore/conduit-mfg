@@ -61,6 +61,8 @@ Switches:
 
 	-D		operate in debug mode.
 
+	-s		Scan only -- don't change gateways.
+
 	-I {org}	Set organization ID to "org", default "$OPTORGID_DFLT"
 
 	-O {ownername}	Set owner name to "ownername", default "$OPTOWNER_DFLT"
@@ -84,6 +86,24 @@ Switches:
 			the gateways (at least initially). Default:
 			$OPTPUBKEY_DEFAULT.
 
+File format
+	The input file is a tab-separated database, with a header line, and at least
+	the following columns.
+
+	\$1	The gateway type (Conduit 246L or Conduit AP).
+	\$2	The IP address of the gateway on the mfg network.
+	\$3	The mac address of the gateway
+
+	Additional columns, if present are used; otherwise they're populated.
+
+	\$4	Gateway name
+	\$5	GatewayID
+	\$6	OrgID
+	\$7	Public Key
+	\$8	User number on jumphost
+	\$9	keep alive port
+	\$10	EUI64 of LoRa MAC
+	\$11	tunnel status (ok or NG)
 .
 }
 
