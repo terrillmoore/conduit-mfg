@@ -1,6 +1,5 @@
 # Changing the Organization of a Gateway
 
-
 <!-- TOC depthFrom:2 -->
 
 - [Preliminaries](#preliminaries)
