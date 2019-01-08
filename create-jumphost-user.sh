@@ -19,8 +19,11 @@
 #   	Terry Moore, MCCI Corporation
 #
 
-PNAME=$(basename $0)
-PDIR=$(dirname $0)
+PNAME=$(basename "$0")
+
+# this is part of the pattern so:
+# shellcheck disable=2034
+PDIR=$(dirname "$0")
 
 # output to terminal, but only if verbose.
 function _verbose {
@@ -98,7 +101,6 @@ declare -r OPTJHUSER_DEFAULT="$USER"
 OPTJHUSER="$OPTJHUSER_DEFAULT"
 declare -r OPTJHFQDN_DEFAULT="ec2-54-221-216-139.compute-1.amazonaws.com"
 OPTJHFQDN="$OPTJHFQDN_DEFAULT"
-declare -i OPTFIRSTUSER=20000
 declare -i OPTUID=0
 
 # scan args.
@@ -134,11 +136,11 @@ do
 done
 
 #### get rid of scanned options ####
-shift	`expr $OPTIND - 1`
+shift	$((OPTIND - 1))
 
-if [ $OPTQUERY -eq 0 -a $# -ne 2 ]; then
+if [ $OPTQUERY -eq 0 ] && [ $# -ne 2 ]; then
 	_error "Must specify gw uname and group: $USAGE"
-elif [ $OPTQUERY -ne 0 -a $# -ne 1 ]; then 
+elif [ $OPTQUERY -ne 0 ] && [ $# -ne 1 ]; then 
 	_error "-Q allows only gw uname"
 fi
 
@@ -168,7 +170,7 @@ if [ $OPTQUERY -ne 0 ]; then
 
 	MYSSHKEY=$(
 	    ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
-		sudo head -1 /home/$MYNAME/.ssh/authorized_keys
+		sudo head -1 /home/"$MYNAME"/.ssh/authorized_keys
 	)
 	MYPWENT=$(
 	    ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
@@ -203,6 +205,9 @@ if [ $FOUNDUSER -eq 0 ]; then
 	_verbose "Creating $MYNAME with userid $OPTUID"
 	USEROPTS="--non-unique --uid $OPTUID"
     fi
+
+# USEROPTS is deliberately not quoted
+# shellcheck disable=2086
 _debug ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
 	sudo useradd --comment "$MYNAME" --password "*" \
 		--gid "${MYGROUP}" \
@@ -210,6 +215,9 @@ _debug ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
 		--create-home \
 		$USEROPTS \
 		--key UID_MIN="${FIRSTUID}" "$MYNAME"
+
+# USEROPTS is deliberately not quoted
+# shellcheck disable=2086
 ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
 	sudo useradd --comment "$MYNAME" --password '\*' \
 		--gid "${MYGROUP}" \
@@ -259,6 +267,6 @@ ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
 		_error "can't chmod authorized_keys"
 
 # output the user id (port number)
-printf "$JUMPUID\t$KEEPALIVE\n"
+printf "%s\t%s\n" "$JUMPUID" "$KEEPALIVE"
 
 _verbose "Done!"

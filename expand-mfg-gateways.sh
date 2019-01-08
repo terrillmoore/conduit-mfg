@@ -79,8 +79,7 @@ Switches:
 
 	-p *		set the initial root password to arg.
 
-	-u #		Set the starting user number. # must be in
-			[20000..29999].
+	-u *		Set the username to use when connecting to the jumphost.
 
 	-k {keyfile}	specify the public key to be used for logging into
 			the gateways (at least initially). Default:
@@ -132,7 +131,6 @@ OPTPASSWD="LWlC8bY6"
 declare -r OPTPUBKEY_DEFAULT=~/.ssh/tmm-conduit.pub
 OPTPUBKEY="${OPTPUBKEY_DEFAULT}"
 declare -i OPTSCANONLY=0
-declare -i OPTUSER
 
 # set up the arrays OPTSTART_INFRA and OPTSTART_PERSONAL
 declare -A OPTSTART_INFRA
