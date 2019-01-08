@@ -198,7 +198,7 @@ else
 fi
 
 if [ $FOUNDUSER -eq 0 ]; then
-    if [ $OPTUID -eq 0 ]; then
+    if [ "$OPTUID" -eq 0 ]; then
 	_verbose "Creating $MYNAME"
 	USEROPTS=
     else
@@ -235,18 +235,22 @@ JUMPUID=$(ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
 		grep "^$MYNAME:" /etc/passwd |
 		cut -d: -f3)
 _verbose "User ID for $MYNAME is $JUMPUID"
+
+# no benefit from rewriting at this time.
+# shellcheck disable=2003
 KEEPALIVE=$(expr '(' "$JUMPUID" - "$FIRSTUID" ')' '*' 2 + "$FIRSTKEEPALIVE")
 _verbose "Keepalive port for $MYNAME is $KEEPALIVE"
 
 # create ssh dir
 _verbose "Creating .ssh dir for $MYNAME"
-ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
+if ssh -p "$JUMPPORT" "$JUMPADMIN"@"$JUMPHOST" \
         sudo -u "$MYNAME" "sh -c '
 		cd &&
 		if [ ! -d .ssh ] ; then
 			mkdir -m 700 .ssh || exit 1 ;
-		fi'"
-if [ $? -ne 0 ]; then
+		fi'" ; then
+	true
+else
 	_error "mkdir .ssh failed"
 fi
 

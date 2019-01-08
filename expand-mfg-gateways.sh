@@ -19,8 +19,8 @@
 #   	Terry Moore, MCCI Corporation
 #
 
-PNAME=$(basename $0)
-PDIR=$(dirname $0)
+PNAME=$(basename "$0")
+PDIR=$(dirname "$0")
 
 # output to terminal, but only if verbose.
 function _verbose {
@@ -162,12 +162,12 @@ do
 		;;
 	n)	NEXTBOOL=-1;;
 	I)	OPTORGID="$OPTARG";;
-	i)	_setstart $c OWNER "${OPTARG:0:1}" "${OPTARG:1}";;
+	i)	_setstart "$c" OWNER "${OPTARG:0:1}" "${OPTARG:1}";;
 	j)	OPTJHFQDN="$OPTARG";;
 	k)	OPTPUBKEY="$OPTARG"
 		test -f "$OPTPUBKEY" || _error "-$c: can't read key file: $OPTARG"
 		;;
-	m)	_setstart $c MCCI "${OPTARG:0:1}" "${OPTARG:1}";;
+	m)	_setstart "$c" MCCI "${OPTARG:0:1}" "${OPTARG:1}";;
 	O)	OPTOWNER="$OPTARG";;
 	p)	OPTPASSWD="$OPTARG";;
 	s)	OPTSCANONLY=$NEXTBOOL;;
@@ -179,7 +179,7 @@ do
 done
 
 #### get rid of scanned options ####
-shift	`expr $OPTIND - 1`
+shift $((OPTIND - 1))
 
 test $# -ne 0 || _error "must provide at least one argument"
 
