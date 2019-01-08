@@ -20,8 +20,11 @@
 #   	Terry Moore, MCCI Corporation
 #
 
-PNAME=$(basename $0)
-PDIR=$(dirname $0)
+PNAME=$(basename "$0")
+
+# this is part of the pattern so:
+# shellcheck disable=2034
+PDIR=$(dirname "$0")
 
 # output to terminal, but only if verbose.
 function _verbose {
@@ -173,9 +176,10 @@ gateway_collaborators:
 }
 
 #### argument scanning:  usage ####
-USAGE="${PNAME} -[DFhv -H* -I* -O*] {databasefile}"
+USAGE="${PNAME} -[dDFhv -H* -I* -O*] {databasefile}"
 
 declare -i OPTDEBUG=0
+declare -i OPTDRYRUN=0
 declare -i OPTVERBOSE=0
 declare -r OPTINCLUDEPATTERN_DEFAULT='.*'
 OPTINCLUDEPATTERN="${OPTINCLUDEPATTERN_DEFAULT}"
@@ -188,7 +192,7 @@ OPTHOSTFILE="${OPTHOSTFILE_DEFAULT}"
 
 # scan args.
 NEXTBOOL=1
-while getopts DFnhH:I:O:v c
+while getopts dDFnhH:I:O:v c
 do
 	if [ $NEXTBOOL -eq -1 ]; then
 		NEXTBOOL=0
@@ -201,6 +205,7 @@ do
 	fi
 
 	case $c in
+	d)	OPTDRYRUN=$NEXTBOOL;;
 	D)	OPTDEBUG=$NEXTBOOL;;
 	F)	OPTOVERWRITE=$NEXTBOOL;;
 	h)	_help
@@ -219,7 +224,7 @@ do
 done
 
 #### get rid of scanned options ####
-shift	`expr $OPTIND - 1`
+shift	$((OPTIND - 1))
 
 ### do the work ###
 function _getgateways {
@@ -256,12 +261,12 @@ awk 	-v optVerbose="$OPTVERBOSE" \
     ' "$@"
  }
 
-test -d ${OPTORGDIR}/inventory || _error "not a directory: ${OPTORGDIR}/inventory"
-test -d ${OPTORGDIR}/inventory/host_vars || _error "not a directory: ${OPTORGDIR}/inventory/host_vars"
+test -d "${OPTORGDIR}"/inventory || _error "not a directory: ${OPTORGDIR}/inventory"
+test -d "${OPTORGDIR}"/inventory/host_vars || _error "not a directory: ${OPTORGDIR}/inventory/host_vars"
 
 HOSTFILE=${OPTORGDIR}/inventory/${OPTHOSTFILE}
 
-_getgateways "$@" | while IFS=$'\t' read GatewayID UserNum Keepalive GatewayName ; do
+_getgateways "$@" | while IFS=$'\t' read -r GatewayID UserNum Keepalive GatewayName ; do
 	_debug "GatewayID='${GatewayID}'"
 	_debug "UserNum='${UserNum}'"
 	_debug "Keepalive='${Keepalive}'"
@@ -274,31 +279,42 @@ _getgateways "$@" | while IFS=$'\t' read GatewayID UserNum Keepalive GatewayName
 	fi
 done || exit $?
 
-if [ X"${OPTHOSTFILE}" != X -a -f "${HOSTFILE}" ]; then
+if [ X"${OPTHOSTFILE}" != X ] && [ -f "${HOSTFILE}" ]; then
 	if [ $OPTOVERWRITE -eq 0 ]; then
 		_error "File exists: $HOSTFILE"
 	fi
 fi
 
-_getgateways "$@" | while IFS=$'\t' read GatewayID UserNum Keepalive GatewayName ; do
+_getgateways "$@" | while IFS=$'\t' read -r GatewayID UserNum Keepalive GatewayName ; do
 	OUTFILE=${OPTORGDIR}/inventory/host_vars/${GatewayID}.yml
 	_verbose "$OUTFILE: $GatewayName"
-	_emit_template | \
-	sed \
-		-e 's/${GatewayID}/'"${GatewayID}"'/g' \
-		-e 's/${UserNum}/'"${UserNum}"'/g' \
-		-e 's/${Keepalive}/'"${Keepalive}"'/g' \
-		-e 's/${GatewayName}/'"${GatewayName}"'/g' \
-		> ${OUTFILE}
-	done
+
+	# we're deliberately expanding parameters so...
+	# shellcheck disable=2016
+	if [ $OPTDRYRUN -eq 0 ]; then
+		_emit_template | \
+		sed \
+			-e 's/${GatewayID}/'"${GatewayID}"'/g' \
+			-e 's/${UserNum}/'"${UserNum}"'/g' \
+			-e 's/${Keepalive}/'"${Keepalive}"'/g' \
+			-e 's/${GatewayName}/'"${GatewayName}"'/g' \
+			> "${OUTFILE}"
+	else
+		echo "Would write gateway file: ${OUTFILE}"
+	fi
+done
 
 if [ X"${OPTHOSTFILE}" != X ]; then
+  if [ $OPTDRYRUN -eq 0 ]; then
 	{
 	printf "\n# move these to the test section above\n"
 	printf "[test]\n"
 
-	_getgateways "$@" | while >>${HOSTFILE} IFS=$'\t' read GatewayID UserNum Keepalive GatewayName ; do
+	_getgateways "$@" | while >>"${HOSTFILE}" IFS=$'\t' read -r GatewayID UserNum Keepalive GatewayName ; do
 		printf "%s\t#%s\n" "${GatewayID}" "${GatewayName}"
     	done
 	} >> "${HOSTFILE}"
+   else
+	echo "Would write host file: ${HOSTFILE}"
+   fi
 fi
