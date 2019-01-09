@@ -4,12 +4,12 @@
 
 2. If the router is not able to deal,
 
-   a. a series of pings:
+   a. Ping all the addresses:
 
       ```shell
       for i in $(seq 1 255); do
-                 ping -c2 -W1 192.168.1.$i |& grep -q '0 received' && echo 192.168.1.$i
-      done > /tmp/ipaddresses
+                ( ping -c2 -W1 192.168.1.$i |& grep -q '0 received' || echo 192.168.1.$i ; ) &
+      done
       ```
 
    b. If using a Windows machine to route to the network, use `arp` to get a list of matching devices, and match to the Multitech network address.
@@ -58,7 +58,7 @@
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
    ```shell
-   ../../expand-mfg-gateways.sh -s -I ttn-ithaca-gateways -O 'Tompkins County' -mi 1 -ii 27 ConduitProvisioning.txt
+   ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt
    ```
 
 9. You'll may get some errors from known_hosts.  Fix things until that's resolved.
