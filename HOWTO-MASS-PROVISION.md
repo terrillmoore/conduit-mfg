@@ -157,7 +157,7 @@
 24. Shutdown all the hosts.
 
     ```shell
-    for i in $ITHHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
+    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
     ```
 
 25. Commit changes in all the repos you used.
