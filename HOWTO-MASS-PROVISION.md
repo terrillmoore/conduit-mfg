@@ -1,6 +1,6 @@
 # How To Mass Provision
 
-1. go to the router, and download a list of mac address => IP address mappings. You may need to reboot the router if there's a huge list. (We may also need to switch to a PI-based raouter for this.)
+1. go to the router, and download a list of mac address => IP address mappings. You may need to reboot the router if there's a huge list. (We may also need to switch to a PI-based router for this.)
 
 2. If the router is not able to deal,
 
@@ -20,7 +20,7 @@
 
       Put result in a file and get it to Linux system.  Count the number of lines and ma sure it matches, etc.
 
-3. Create a directory:  mfg/systems-{date}.
+3. Create a directory:  `mfg/systems-`{date}.
 
 4. In that directory, create ConduitProvisioning.txt, and set the first line, e.g.:
 
@@ -45,15 +45,15 @@
    LC_ALL=c sort -t \t -k3 ConduitProvisioning.txt -o ConduitProvisioning.txt
    ```
 
-   You'll have to move the heading back to the top manually.
+   You'll have to move the heading back to the top manually in a text editor. I use VS Code, and it's really easy.
 
-7. We'll use `expand-mfg-gateways.sh` to expand the gateway last, but first, we need to get some info
+7. We'll use `expand-mfg-gateways.sh` to expand the gateway last, but first, we need to get some info from the gateways.
 
-   - If some gateways are being used for MCCI purposes, then use the '-mi' switch to reserve some gateways for our use.
+   - If some gateways are being used for MCCI purposes, then use the '`-mi`' switch to reserve some gateways for our use.
 
-   - Set the org to the default org, "Tompkins County" (-I ttn-ithaca-gateways).
+   - Set the org to the default org, "Tompkins County" (`-I ttn-ithaca-gateways`).
 
-   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looks like 27.
+   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this.
 
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
@@ -61,7 +61,7 @@
    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt
    ```
 
-9. You'll may get some errors from known_hosts.  Fix things until that's resolved.
+9. You'll may get some errors from `known_hosts`.  Fix things until that's resolved.
 
 10. Run `expand-mfg-gateways.sh` in scan mode, but put info into a file.
 
@@ -69,9 +69,9 @@
     ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt > ConduitDB.txt
     ```
 
-    There shouuld be no error messages and no warnings.
+    There should be no error messages and no warnings.
 
-11. Examine the file and correct anything that needs to be corrected.
+11. Examine the file `ConduitDB.txt` and correct anything that needs to be corrected. (Generally there's nothing, but the automation doesn't try to be perfect; low-frequency events have to be handled manually.)
 
 12. Run `expand-mfg-gateways.sh` in deploy mode, capturing the output.
 
