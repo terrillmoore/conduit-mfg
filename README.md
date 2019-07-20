@@ -11,37 +11,39 @@ Detailed contents:
 <!-- TOC depthFrom:2 -->
 
 - [Theory](#theory)
-    - [Background](#background)
-    - [Approach](#approach)
-    - [Organizational Information](#organizational-information)
-        - [The <code>org/</code> directory](#the-codeorgcode-directory)
-    - [The <code>hosts</code> file](#the-codehostscode-file)
-        - [host_vars/](#host_vars)
-            - [host_vars/ttn-\{hostXX\}.yml](#host_varsttn-\hostxx\yml)
-            - [group_vars/](#group_vars)
-            - [group_vars/conduits.yml](#group_varsconduitsyml)
-    - [How Provisioning Works](#how-provisioning-works)
-    - [How Jump Hosts are managed](#how-jump-hosts-are-managed)
+	- [Background](#background)
+	- [Approach](#approach)
+	- [Organizational Information](#organizational-information)
+		- [The <code>org/</code> directory](#the-codeorgcode-directory)
+	- [The <code>hosts</code> file](#the-codehostscode-file)
+		- [host_vars/](#host_vars)
+			- [host_vars/ttn-\{hostXX\}.yml](#host_varsttn-\hostxx\yml)
+			- [group_vars/](#group_vars)
+			- [group_vars/conduits.yml](#group_varsconduitsyml)
+	- [How Provisioning Works](#how-provisioning-works)
+	- [How Jump Hosts and Ports are managed](#how-jump-hosts-and-ports-are-managed)
+		- [Mechanizing the hacks](#mechanizing-the-hacks)
 - [Practice](#practice)
-    - [Setting up your manufacturing station](#setting-up-your-manufacturing-station)
-        - [Creating an organizational repo](#creating-an-organizational-repo)
-            - [Using the starting point](#using-the-starting-point)
-            - [Creating an organizational rebo by hand](#creating-an-organizational-rebo-by-hand)
-        - [Checking out your organizational repo](#checking-out-your-organizational-repo)
-        - [User names and ports on your jumphost](#user-names-and-ports-on-your-jumphost)
-        - [Ansible setup on management PC](#ansible-setup-on-management-pc)
-        - [Install your authorized_keys in your Ansible setup](#install-your-authorized_keys-in-your-ansible-setup)
-    - [Preparing the Conduit](#preparing-the-conduit)
-        - [Reflashing the Conduit](#reflashing-the-conduit)
-        - [Resetting the Conduit to Factory Defaults](#resetting-the-conduit-to-factory-defaults)
-    - [Setting up Conduit for Ansible](#setting-up-conduit-for-ansible)
-    - [PC Setup Prerequisites](#pc-setup-prerequisites)
-    - [Attaching the Conduit while in Factory State](#attaching-the-conduit-while-in-factory-state)
-    - [Perform the stage1 initialization](#perform-the-stage1-initialization)
-    - [Do stage 2 setup](#do-stage-2-setup)
-    - [Update configuration with final jumphost port](#update-configuration-with-final-jumphost-port)
-    - [Use Ansible to complete the setup](#use-ansible-to-complete-the-setup)
-        - [Sign in to The Things Network](#sign-in-to-the-things-network)
+	- [Setting up your manufacturing station](#setting-up-your-manufacturing-station)
+		- [Creating an organizational repo](#creating-an-organizational-repo)
+			- [Using the starting point](#using-the-starting-point)
+			- [Creating an organizational rebo by hand](#creating-an-organizational-rebo-by-hand)
+		- [Checking out your organizational repo](#checking-out-your-organizational-repo)
+		- [User names and ports on your jumphost](#user-names-and-ports-on-your-jumphost)
+		- [Ansible setup on management PC](#ansible-setup-on-management-pc)
+		- [Install your authorized_keys in your Ansible setup](#install-your-authorized_keys-in-your-ansible-setup)
+	- [Preparing the Conduit](#preparing-the-conduit)
+		- [Reflashing the Conduit](#reflashing-the-conduit)
+		- [Resetting the Conduit to Factory Defaults](#resetting-the-conduit-to-factory-defaults)
+	- [Setting up Conduit for Ansible](#setting-up-conduit-for-ansible)
+	- [PC Setup Prerequisites](#pc-setup-prerequisites)
+	- [Attaching the Conduit while in Factory State](#attaching-the-conduit-while-in-factory-state)
+	- [Connect the gateway to the jumphost](#connect-the-gateway-to-the-jumphost)
+	- [Do jumphost setup](#do-jumphost-setup)
+	- [Quick Reference for the experienced](#quick-reference-for-the-experienced)
+	- [Add the new gateway to the Ansible database](#add-the-new-gateway-to-the-ansible-database)
+	- [Use Ansible to complete the setup](#use-ansible-to-complete-the-setup)
+		- [Sign in to The Things Network](#sign-in-to-the-things-network)
 
 <!-- /TOC -->
 
@@ -108,15 +110,15 @@ For the purposes of this discussion, we'll assume the following directory struct
         ...
 </pre>
 
-Note that `ttn-multitech-cm/` is a git [_**submodule**_](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
+Note that `ttn-multitech-cm/` is a git [**submodule**](https://git-scm.com/book/en/v2/Git-Tools-Submodules). This complicates checkouts, but greatly simplifies ensuring consistency among different developers.
 
 #### The <code>org/</code> directory
 
-This is an Ansible [_**inventory directory**_](http://docs.ansible.com/ansible/latest/intro_dynamic_inventory.html#using-inventory-directories-and-multiple-inventory-sources). As such, you need to be careful to only put the `hosts` file here; all files are liable to interpretation by Ansible. We note in passing that it is possible to specify the group hierarchy separately in a `groups` or `groups.yml` file.
+This is an Ansible [**inventory directory**](http://docs.ansible.com/ansible/latest/intro_dynamic_inventory.html#using-inventory-directories-and-multiple-inventory-sources). As such, you need to be careful to only put the `hosts` file here; all files are liable to interpretation by Ansible. We note in passing that it is possible to specify the group hierarchy separately in a `groups` or `groups.yml` file.
 
 ### The <code>hosts</code> file
 
-The `hosts` file is an Ansible [_**inventory**_](http://docs.ansible.com/ansible/latest/intro_inventory.html) file. It provides the following information:
+The `hosts` file is an Ansible [**inventory**](http://docs.ansible.com/ansible/latest/intro_inventory.html) file. It provides the following information:
 
 - the names we'll use to refer to each of the known systems (_**hosts**_) that are to be controlled by Ansible; and
 - the _**groups**_ to which hosts belong.
@@ -174,28 +176,29 @@ This file contains information (again, in the form of variable settings) that ap
 
 3. The provisioning operator runs a script PC changes the Conduit to use DHCP (if this is what the final network location will use). If the final network location will not use DHCP, the remaining steps will have to be performed on the final network. We strongly advise use of DHCP, if possible.
 
-7. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then:
+4. Either the operator forces a DHCP cycle, or reboots the Conduit, or optionally, the operator moves the Conduit to another physical location.  In any case, the router then:
 
    1. assigns the Conduit a new address,
    2. sets up the initial authorized key file for use during the rest of the provisioning process, and
    3. tells the Conduit what its gateway is (`192.168.2.254` in this case).
 
-4. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
+5. The provisioning PC connects to the Conduit using ssh (root/root), and does the following initial setup.
 
    1. Install the starting point for Ansible
 
-5. Either manually, or using Ansible, the following steps are performed. To do using Ansible, a new `provision.yml` is needed, and the inventory has to be a special provisioning inventory.
+6. Either manually, or using Ansible, the following steps are performed. To do using Ansible, a new `provision.yml` is needed, and the inventory has to be a special provisioning inventory.
 
    1. Generate a private key to be used for autossh key, and fetch the public key to be stored in the database for the Conduit.
    2. Establishes an autossh to the initial jumphost using the assigned port number.
    3. Installs an initial authorized_keys file for root login using the ops team key.
    4. Disables password-based login for root via ssh.
 
-5. The provisioning PC installs the public key for the new Conduit on the jumphost.
+7. The provisioning PC installs the public key for the new Conduit on the jumphost.
 
-8.  At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:
+8. At this point, the Conduit is able to log into the jumphost, and the configuration looks like this:
 
     ![Live Model](http://www.plantuml.com/plantuml/png/LO_1JiGm34Jl_WhVEANy04ABoWc1jXBYX11AMzEDbCHHuhI20z-EoxPekSrax77UeOZDKeE7A-oyZVBoz8Wks8dmWpFAYP0JPIikJbX8QchmcGYNPMdIEg-hpS018F98-513Ed6Hi-jQV8Kky-oAuxWsT2sydREMurYTwC2cD1YjsDuMmcEUxbLhgCf6zwNtEUAQWp469btCbFZNk3XJ5CwVi5v-dsqkrp1bhcdJ5yLtiRZUanRlAcKUQAoPobzpgNtWiNe2aMX2zUA4XfCPWbR1ZeWtJRFo_FCxYv9_truwOtOesE7qQVi474W7W_y1)
+
     For clarity, we show the databases on the Provisioning PC in this diagram.
 
     Now, instead of the PC connecting directly to the Conduit, all connection is made via the Jumphost. As long as the Conduit is provisioned using DHCP, the entire remainder of provisioning can be done via normal Ansible operations.
@@ -252,7 +255,7 @@ This procedure requires the following setup. (See [the figure](#Provisioning-Set
 
     - Ubuntu-64 16.04LTS
     - Ansible
-    - The other pre-requisites from https://github.com/IthacaThings/ttn-multitech-cm
+    - The other pre-requisites from [https://github.com/IthacaThings/ttn-multitech-cm](https://github.com/IthacaThings/ttn-multitech-cm)
     - Your organizational repo.
 
     This system needs to be connected to a downstream port of the above router. It must have an address other than `192.168.2.1`!
@@ -419,7 +422,7 @@ In this first step, we'll do the following.
 1. Connect to the Conduit via a dedicated Ethernet port.
 2. Set up the Conduit for DHCP and set up the auto-SSH tunnel to the jumphost
 3. Ansible control.
-3. Restart.
+4. Restart.
 
 ### PC Setup Prerequisites
 
@@ -440,6 +443,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 3. Connect the Conduit to the router using the Ethernet cable and let it boot up.
 
 4. Ping the Conduit:
+
     ```shell
     $ ping 192.168.2.1
     PING 192.168.2.1 (192.168.2.1) 56(84) bytes of data.
@@ -452,6 +456,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     ```
 
 5. SSH to the Conduit:
+
     ```shell
     $ ssh root@192.128.2.1
     $ ssh root@192.168.2.1
@@ -463,6 +468,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
     At this point, the time is very likely to be wrong. The upstream gateway isn't set, so you can't do anything. And Ansible isn't set up. But we'll change that in a moment.
 
 6. Check the mLinux version:
+
     ```shell
     root@mtcdt:~# cat /etc/mlinux-version
     mLinux 3.3.13
@@ -472,11 +478,13 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
     If the version is not at least 3.3.1, **stop** -- you have to upgrade to a newer version of mLinux before you can proceed.
 
-### Perform the stage1 initialization
+### Connect the gateway to the jumphost
 
 1. Prepare a suitable SSH public key file. In this example, we use `conduit.pub`.
 
-1. **On the managment PC:** Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
+2. **On the managment PC:**
+
+   Run the script `generate-conduit-stage1` to generate the stage 1 configuration file.
 
     ```console
     cd ${SANDBOX}/ttn-multitech-cm
@@ -485,7 +493,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
     By default, this generates a script suitable for use when logging into the Conduit via Ethernet. This is your only option if configuring a Conduit AP. If configuring a Conduit 210 or 246, you have the option of using a USB connection.  In that case, consider editing `generate-conduit-stage1` to enable `OPTUSBSER`, and regenerate `/tmp/conduit-stage1` if needed.
 
-2. **On the management PC:** Use scp to copy the file to the Conduit.
+3. **On the management PC:** Use scp to copy the file to the Conduit.
 
     ```shell
     CONDUIT=192.168.2.1
@@ -494,7 +502,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
     You'll be prompted for root's password.
 
-3. Now we need to run the script.
+4. Now we need to run the script.
 
    - **Via Ethernet:** Log into $CONDUIT, and run the script you've just copied over. The Conduit will set up for DHCP. If the Conduit is not on a network with a DHCP servier, you will need to move the cable to a network segment. The output looks like this:
 
@@ -583,7 +591,7 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
       root@mtcdt:~#
       ```
 
-4. **On the management PC:** If the IP address of the Conduit changed, update the value of the CONDUIT variable.
+5. **On the management PC:** If the IP address of the Conduit changed, update the value of the CONDUIT variable.
 
     ```bash
     CONDUIT=192.168.1.108
@@ -591,14 +599,14 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
     **_Remember to change the IP address to match what DHCP assigned!_**
 
-4. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
+6. **On the managment PC:** Prepare to use ssh by adding the gateway login key to your ssh agent. (Remember that you defined the keys that you will use previously; see [above](https://gitlab-x.mcci.com/client/milkweed/mcgraw/conduit-mfg#install-your-authorized_keys-in-your-ansible-setup)).
 
     ```bash
     if [ X"$SSH_AUTH_SOCK" = X ]; then eval `ssh-agent` ; fi
     ssh-add {path}/keyfile
     ```
 
-5. **On the managment PC:** Verify that password-based login is disabled.
+7. **On the managment PC:** Verify that password-based login is disabled.
 
     ```console
     $ SSH_AUTH_SOCK= ssh root@$CONDUIT
@@ -607,71 +615,27 @@ You need a specially-prepared NAT-ing IPv4 router -- a Wi-Fi gateway + router wo
 
     If the Conduit lets you log in with password `root`, stop! Something has gone wrong.
 
-### Do stage 2 setup
+### Do jumphost setup
 
 The remaining work is done using the PC and ssh. The USB cable is no longer needed. However we still need to get the unit connected to the jump host.
 
-1. If you're restarting, set the value of the `CONDUIT` variable.
+Follow the instructions given in [`HOWTO-MASS-PROVISION.md`](HOWTO-MASS-PROVISION.md). Even if you're only provisioning one gateway, that procedure is the best way to do things, at least up to the point where you can verify that the gateway is connected to the jumphost.
 
-    ```bash
-    CONDUIT=192.168.1.108
-    ```
+From the development computer, test that you can now connect to the Conduit via the jumphost.
 
-2. If you haven't done this yet, set up the shell variables that describe your jumphost.
+In the general case, this is:
 
-    ```bash
-    JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com # change this if needed
-    JUMPADMIN=tmm # this is your login on the jumphost
-    ```
+```bash
+ssh -tA  $JUMPADMIN@$JUMPHOST  ssh -A -p $JUMPUID root@localhost
+```
 
-   You must have an SSH-enabled login on the jumphost, and your login must have `sudo` privileges.
+For example:
 
-3. If you haven't done this yet, set up the variable that sets the pattern for user-names for the gateways. All gateways be named `${MYPREFIX}-xx-xx-xx-xx-xx-xx`, where MYPREFIX is given below, and "xx-xx-xx-xx-xx-xx" is changed to the primary Ethernet MAC address of the gateway.
-
-    ```bash
-    MYPREFIX=ttn-ithaca
-    ```
-
-2. Run the stage 2 script, which will set up the connection between the Conduit and the jump host, and assign a port name and a device name. Cut and paste the following.
-
-    ```bash
-    scp -p roles/conduit/files/conduit-stage2 roles/conduit/files/ssh_tunnel.initd root@$CONDUIT:/tmp && \
-        ssh -tA root@$CONDUIT JUMPHOST=$JUMPHOST \
-            JUMPADMIN=$JUMPADMIN JUMPPORT=22 MYPREFIX=$MYPREFIX /tmp/conduit-stage2
-    ```
-
-    Note the instructions for connecting that are printed at the end of a successful run, for example:
-
-    ```console
-    ************
-    * Success! *
-    ************
-
-    You can now connect to this gateway using the command:
-
-       ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
-
-    Don't forget to update host_vars/ttn-nyc-00-08-00-4a-26-f0.yaml to set these values
-
-       ssh_tunnel_remote_port: 20000
-       ssh_tunnel_keepalive_base_port: 40000
-    ```
-
-2. From the development computer, test that you can now connect to the Conduit via the jumphost.
-
-    In the general case, this is:
-
-    ```bash
-    ssh -tA  $JUMPADMIN@$JUMPHOST  ssh -A -p $JUMPUID root@localhost
-    ```
-
-    For example:
-
-    ```console
-    # ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
-    Last login: Sun Nov  5 08:39:54 2017 from 192.168.4.6
-    root@mtcdt:~#
-    ```
+```console
+# ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
+Last login: Sun Nov  5 08:39:54 2017 from 192.168.4.6
+root@mtcdt:~#
+```
 
 ### Quick Reference for the experienced
 
@@ -691,7 +655,6 @@ The remaining work is done using the PC and ssh. The USB cable is no longer need
 3. Repeat for each Conduit
 
    1. Set the Conduit's local IP address
-
 
        ```bash
        CONDUIT=192.168.x.y
