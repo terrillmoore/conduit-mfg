@@ -29,7 +29,7 @@
    printf "Device Type\tClient IP address\tClients MAC Address\n" > ConduitProvisioning.txt
    ```
 
-5. Fill in the data, separated by tabs. Device types are "Conduit 210L", "Conduit 246L", "Conduit AP", e.g.:
+5. Fill in the data, **separated by tabs**. Device types are "Conduit 210L", "Conduit 246L", "Conduit AP", e.g.:
 
    ```provisioning
    Device Type	Client IP address	Clients MAC Address
@@ -55,13 +55,15 @@
 
    - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this.
 
+   This is not actually critical; just need unique names. You can edit things.
+
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
    ```shell
    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt
    ```
 
-9. You'll may get some errors from `known_hosts`.  Fix things until that's resolved.
+9. You'll may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
 
 10. Run `expand-mfg-gateways.sh` in scan mode, but put info into a file.
 
@@ -108,12 +110,14 @@
     Would write gateway file: ../../../org-ttn-nyc-gateways/inventory/host_vars/ttn-nyc-00-08-00-4a-44-f9.yml
     Would write host file: ../../../org-ttn-nyc-gateways/inventory/hosts_new
     $ ../../create-ansible-mfg-gateways.sh -I 'ttn-ithaca' -O ../../../org-ttn-ithaca-gateways -d ConduitDB.txt
-    Would write gateway file: ../../../org-ttn-nyc-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fa.yml
-    Would write gateway file: ../../../org-ttn-nyc-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fc.yml
-    Would write gateway file: ../../../org-ttn-nyc-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fd.yml
+    Would write gateway file: ../../../org-ttn-ithaca-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fa.yml
+    Would write gateway file: ../../../org-ttn-ithaca-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fc.yml
+    Would write gateway file: ../../../org-ttn-ithaca-gateways/inventory/host_vars/ttn-ithaca-00-08-00-4a-44-fd.yml
     ...
-    Would write host file: ../../../org-ttn-nyc-gateways/inventory/hosts_new
+    Would write host file: ../../../org-ttn-ithaca-gateways/inventory/hosts_new
     ```
+
+   If it says "File exists ../../../org-ttn-nyc-gateways/inventory/hosts_new", you have a leftover file. Move it out of the way.
 
 17. Write the host files.
 
@@ -127,7 +131,22 @@
 19. Get the list of hosts to be provisioned into a variable:
 
     ```shell
-    NEWHOSTS=$(cut -f1 ../org-ttn-ithaca-gateways/inventory/hosts_new)
+    NEWHOSTS="$(sed -ne '1,/^\[test/d' -e 's/^\([^ \t][^ \t]*\).*$/\1/p' ../../../org-ttn-ithaca-gateways/inventory/hosts_new)"
+    ```
+
+20. You may need to add the multiprocessing setup. On the provisioning host: 
+
+    ```shell
+    cut -f 8 ConduitDB.txt
+    ```
+
+   This gives you a list of the port numbers for the new gateways.
+   
+   On the jumphost:
+
+    ```shell
+    GWS={ports of new gateways}
+    for i in $GWS ; do printf "%d: " $i ; ssh -p $i root@localhost opkg update '&&' opkg install python-multiprocessing ; done
     ```
 
 20. Change directory to the `ttn-multitech-cm` repo, and do a ping:
