@@ -107,19 +107,19 @@
     mv ConduitDB2.txt ConduitDB.txt
     ```
 
-16. Make sure that `python-multiprocessing` is installed on the target(s).
+16. Make sure that `python-terminal` and `python-multiprocessing` are installed on the target(s). Also create the `/usr/local/lib` directory.
 
     On each gateway, run:
 
     ```bash
-    opkg update && opkg install python-terminal python-multiprocessing
+    opkg update && opkg install python-terminal python-multiprocessing && mkdir /usr/local/lib
     ```
 
     A massive way to do this is something like this, on the jumphost:
 
     ```bash
     export GWS=$(tail -n+2 ConduitDB.txt | cut -f2)
-    for i in $GWS ; do ssh root@$i -c 'opkg update && opkg install pytho-terminal python-multiprocessing' ; done
+    for i in $GWS ; do ssh root@$i -c 'opkg update && opkg install python-terminal python-multiprocessing && mkdir /usr/local/lib' ; done
     ```
 
 17. Do a dry run of `create-ansible-mfg-gateways` for each of your target organizations, using a suitable input pattern.
