@@ -4,25 +4,27 @@
 
 2. If the router is not able to deal,
 
-   a. Ping all the addresses:
+   a. Connect the Linux system to the 192.168.1 network
+
+   b. Ping all the addresses:
 
       ```shell
       for i in $(seq 1 255); do
-                ( ping -c2 -W1 192.168.1.$i |& grep -q '0 received' || echo 192.168.1.$i ; ) &
-      done
+        { ( ping -c2 -W1 192.168.1.$i |& grep -q '0 received' || echo 192.168.1.$i > /dev/tty ; ) & disown; }
+      done >& /dev/null
       ```
 
-   b. If using a Windows machine to route to the network, use `arp` to get a list of matching devices, and match to the Multitech network address.
+   c. Use `arp` to get a list of matching devices, and match to the MultiTech network address.
 
       ```shell
-      arp -a | grep 192.168.1 | grep 00-08-00
+      arp -vn | grep '00:08:00' | tr : -
       ```
 
-      Put result in a file and get it to Linux system.  Count the number of lines and ma sure it matches, etc.
+   d. Save results for step 4.
 
 3. Create a directory:  `mfg/systems-`{date}.
 
-4. In that directory, create ConduitProvisioning.txt, and set the first line, e.g.:
+4. In that directory, create `ConduitProvisioning.txt`, and set the first line, e.g.:
 
    ```shell
    cd mfg/systems-{date}
@@ -39,6 +41,8 @@
    Conduit 246L	192.168.1.29	00-08-00-4a-45-20
    ```
 
+   Note use of '-' in MAC address.
+
 6. Sort this by mac address:
 
    ```shell
@@ -53,7 +57,7 @@
 
    - Set the org to the default org, "Tompkins County" (`-I ttn-ithaca-gateways`).
 
-   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this.
+   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this. You'll use this as the argument `-ii#` (`-ii27` in this case).
 
    This is not actually critical; just need unique names. You can edit things.
 
@@ -97,13 +101,28 @@
 
     Make sure the new gateways are in the list.
 
-15. Rename the new database ontop of the old database.
+15. Rename the new database on top of the old database.
 
     ```shell
     mv ConduitDB2.txt ConduitDB.txt
     ```
 
-16. Do a dry run of `create-ansible-mfg-gateways` for each of your target organizations, using a suitable input pattern.
+16. Make sure that `python-multiprocessing` is installed on the target(s).
+
+    On each gateway, run:
+
+    ```bash
+    opkg update && opkg install python-terminal python-multiprocessing
+    ```
+
+    A massive way to do this is something like this, on the jumphost:
+
+    ```bash
+    export GWS=$(tail -n+2 ConduitDB.txt | cut -f2)
+    for i in $GWS ; do ssh root@$i -c 'opkg update && opkg install pytho-terminal python-multiprocessing' ; done
+    ```
+
+17. Do a dry run of `create-ansible-mfg-gateways` for each of your target organizations, using a suitable input pattern.
 
     ```console
     $ ../../create-ansible-mfg-gateways.sh -I 'ttn-nyc' -O ../../../org-ttn-nyc-gateways -d ConduitDB.txt
@@ -117,66 +136,51 @@
     Would write host file: ../../../org-ttn-ithaca-gateways/inventory/hosts_new
     ```
 
-   If it says "File exists ../../../org-ttn-nyc-gateways/inventory/hosts_new", you have a leftover file. Move it out of the way.
+    If it says "`File exists ../../../org-ttn-nyc-gateways/inventory/hosts_new`", you have a leftover file. Move it out of the way.
 
-17. Write the host files.
+18. Write the host files.
 
     ```shell
     ../../create-ansible-mfg-gateways.sh -I 'ttn-nyc' -O ../../../org-ttn-nyc-gateways ConduitDB.txt
     ../../create-ansible-mfg-gateways.sh -I 'ttn-ithaca' -O ../../../org-ttn-ithaca-gateways ConduitDB.txt
     ```
 
-18. Edit the `hosts` file(s) to merge in the `hosts_new` info.
+19. Edit the `hosts` file(s) to merge in the `hosts_new` info.
 
-19. Get the list of hosts to be provisioned into a variable:
+20. Get the list of hosts to be provisioned into a variable:
 
     ```shell
     NEWHOSTS="$(sed -ne '1,/^\[test/d' -e 's/^\([^ \t][^ \t]*\).*$/\1/p' ../../../org-ttn-ithaca-gateways/inventory/hosts_new)"
     ```
 
-20. You may need to add the multiprocessing setup. On the provisioning host: 
-
-    ```shell
-    cut -f 8 ConduitDB.txt
-    ```
-
-   This gives you a list of the port numbers for the new gateways.
-   
-   On the jumphost:
-
-    ```shell
-    GWS={ports of new gateways}
-    for i in $GWS ; do printf "%d: " $i ; ssh -p $i root@localhost opkg update '&&' opkg install python-multiprocessing ; done
-    ```
-
-20. Change directory to the `ttn-multitech-cm` repo, and do a ping:
+21. Change directory to the `ttn-multitech-cm` repo, and do a ping:
 
     ```shell
     make TTN_ORG=../org-ttn-ithaca-gateways TARGET=${NEWHOSTS//[[:space:]]/,} ping
     ```
 
-21. Do an apply:
+22. Do an apply:
 
     ```shell
     make TTN_ORG=../org-ttn-ithaca-gateways TARGET=${NEWHOSTS//[[:space:]]/,} apply
     ```
 
-22. Reboot:
+23. Reboot:
 
     ```shell
     for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108b/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -r now'" ;  done
     ```
 
-23. Wait a minute or two for the reboot, then do a make ping again:
+24. Wait a minute or two for the reboot, then do a make ping again:
 
     ```shell
     make TTN_ORG=../org-ttn-ithaca-gateways TARGET=${NEWHOSTS//[[:space:]]/,} ping
     ```
 
-24. Shutdown all the hosts.
+25. Shutdown all the hosts.
 
     ```shell
     for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
     ```
 
-25. Commit changes in all the repos you used.
+26. Commit changes in all the repos you used.
