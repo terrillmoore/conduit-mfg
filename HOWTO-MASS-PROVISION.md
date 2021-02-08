@@ -17,7 +17,7 @@
    c. Use `arp` to get a list of matching devices, and match to the MultiTech network address.
 
       ```shell
-      arp -vn | grep '00:08:00' | tr : -
+      sudo arp -vn | grep '00:08:00' | tr : - | sort -k1.11n | awk '{ printf("%s\t%s\tTYPE\n", $1, $3) }'
       ```
 
    d. Save results for step 4.
@@ -28,7 +28,7 @@
 
    ```shell
    cd mfg/systems-{date}
-   printf "Device Type\tClient IP address\tClients MAC Address\n" > ConduitProvisioning.txt
+   { printf "Device Type\tClient IP address\tClients MAC Address\n" ; sudo arp -vn | grep '00:08:00' | tr : - | sort -k3 | awk '{ printf("TYPE\t%s\t%s\n", $1, $3) }' ; } > ConduitProvisioning.txt
    ```
 
 5. Fill in the data, **separated by tabs**. Device types are "Conduit 210L", "Conduit 246L", "Conduit AP", e.g.:
@@ -42,6 +42,12 @@
    ```
 
    Note use of '-' in MAC address.
+
+   If you're remote, you can get the Multi-Tech idea of the type by `ssh`ing to the target, and entering:
+
+   ```bash
+   mts-io-sysfs show product-id
+   ```
 
 6. Sort this by mac address:
 
@@ -60,6 +66,8 @@
    - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this. You'll use this as the argument `-ii#` (`-ii27` in this case).
 
    This is not actually critical; just need unique names. You can edit things.
+
+   You may need to install `sshpass` (using `sudo apt install sshpass`).
 
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
@@ -119,7 +127,7 @@
 
     ```bash
     export GWS=$(tail -n+2 ConduitDB.txt | cut -f2)
-    for i in $GWS ; do ssh root@$i -c 'opkg update && opkg install python-terminal python-multiprocessing && mkdir /usr/local/lib' ; done
+    for i in $GWS ; do ssh -p $i root@localhost 'opkg update && opkg install python-terminal python-multiprocessing && mkdir -p /usr/local/lib' ; done
     ```
 
 17. Do a dry run of `create-ansible-mfg-gateways` for each of your target organizations, using a suitable input pattern.
