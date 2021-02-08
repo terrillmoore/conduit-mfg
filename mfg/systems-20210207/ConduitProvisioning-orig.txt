@@ -1,0 +1,12 @@
+Device Type	Client IP address	Clients MAC Address
+Conduit 246L	192.168.1.193	00-08-00-4a-3d-0d
+Conduit 246L	192.168.1.210	00-08-00-4a-3d-1e
+Conduit 246L	192.168.1.212	00-08-00-4a-3d-1f
+Conduit AP	192.168.1.188	00-08-00-4a-3f-75
+Conduit AP	192.168.1.206	00-08-00-4a-3f-87
+Conduit AP	192.168.1.211	00-08-00-4a-3f-8c
+Conduit 246L	192.168.1.254	00-08-00-4a-45-04
+Conduit 246L	192.168.1.175	00-08-00-4a-48-d7
+Conduit 246L	192.168.1.179	00-08-00-4a-48-db
+Conduit 246L	192.168.1.117	00-08-00-4a-e0-5c
+Conduit 246L	192.168.1.59	00-08-00-4a-f0-93
