@@ -167,6 +167,15 @@
     make TTN_ORG=../org-ttn-ithaca-gateways TARGET=${NEWHOSTS//[[:space:]]/,} ping
     ```
 
+22. Make sure `ttn-lw-cli` is set up:
+
+    ```bash
+    sudo snap install --classic ttn-lw-stack
+    sudo snap alias ttn-lw-stack.ttn-lw-cli ttn-lw-cli
+    export TTN_LW_CONFIG=$(realpath ./ttn-lw-cli.yml)
+    ttn-lw-cli login --callback
+    ```
+
 22. Do an apply:
 
     ```shell

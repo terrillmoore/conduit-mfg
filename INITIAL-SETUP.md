@@ -24,7 +24,7 @@ Use Administration > Access Configuration > SSH Settings > [x] Enabled, [x] via 
 
 ![Rebooting after ssh](assets/mpower-enable-ssh-reboot.png)
 
-The device STATUS light will double flash for about a minute. Then the device will stay at 2 lights solid on for about two minutes. Once the STATUS light starts flashing again (or you get a login prompt on the dashboard), you can log in and complete the process.
+The Conduit STATUS light will double flash for about a minute. Then the Conduit will stay at 2 lights solid on for about two minutes. Once the STATUS light starts flashing again (or you get a login prompt on the dashboard), you can log in and complete the process.
 
 Log in using SSH:
 
