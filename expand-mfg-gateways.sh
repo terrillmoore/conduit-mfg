@@ -77,7 +77,11 @@ Switches:
 	-ip#		set the starting index of cusotmer personal gateways
 			to #.
 
-	-p *		set the initial root password to arg.
+	-p {file}	Read the initial root password from arg. Default is to
+			read from stdin. (Reading from stdin may be explicitly
+			selected using "-p -").
+
+	-r *		set the initial root username to arg.
 
 	-u *		Set the username to use when connecting to the jumphost.
 
@@ -127,7 +131,8 @@ OPTORGID_DFLT="ttn-ithaca"
 OPTORGID="$OPTORGID_DFLT"
 OPTOWNER_DFLT="Tompkins County"
 OPTOWNER="$OPTOWNER_DFLT"
-OPTPASSWD="LWlC8bY6"
+OPTPASSWD="-"
+OPTROOT="mtadm"
 declare -r OPTPUBKEY_DEFAULT=~/.ssh/tmm-conduit.pub
 OPTPUBKEY="${OPTPUBKEY_DEFAULT}"
 declare -i OPTSCANONLY=0
@@ -143,7 +148,7 @@ OPTSTART_PERSONAL[OWNER]=1
 
 # scan args.
 NEXTBOOL=1
-while getopts Dnhi:I:j:k:m:O:p:su:v c
+while getopts Dnhi:I:j:k:m:O:p:r:su:v c
 do
 	if [ $NEXTBOOL -eq -1 ]; then
 		NEXTBOOL=0
@@ -170,6 +175,7 @@ do
 	m)	_setstart "$c" MCCI "${OPTARG:0:1}" "${OPTARG:1}";;
 	O)	OPTOWNER="$OPTARG";;
 	p)	OPTPASSWD="$OPTARG";;
+	r)	OPTROOT="$OPTARG";;
 	s)	OPTSCANONLY=$NEXTBOOL;;
 	u)	OPTJHUSER="$OPTARG";;
 	v)	OPTVERBOSE=$NEXTBOOL;;
@@ -189,6 +195,14 @@ for i in MCCI OWNER ; do
 	_debug "OPTSTART_PERSONAL[$i]:" "${OPTSTART_PERSONAL[$i]}"
 done
 
+### fetch the password
+if [[ "$OPTPASSWD" = "-" ]]; then
+	read -r -s -p "Conduit password: " OPTPASSWD || _error "Couldn't get password"
+else
+	PASSWD_FILE="$OPTPASSWD"
+	read -r -s -p "Conduit password: " OPTPASSWD < "$PASSWD_FILE" || _error "Couln't get password from $PASSWD_FILE"
+fi
+
 ### do the work ###
 awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	-v nMCCIpersonal="${OPTSTART_PERSONAL[MCCI]}" \
@@ -203,7 +217,9 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	-v sCREATE_JUMPHOST_USER="$PDIR/create-jumphost-user.sh" \
 	-v optVerbose="$OPTVERBOSE" \
 	-v sSETUP_GATEWAY_TUNNEL="$PDIR/setup-gateway-tunnel.sh" \
+	-v sSETUP_PASSWD="$PDIR/setpass.sh" \
 	-v sPUBKEY="${OPTPUBKEY}" \
+	-v sMTADM="${OPTROOT}" \
     '
     BEGIN {
         nPersonal = 0;
@@ -272,7 +288,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 
 	# fetch the gateway public key
 	if ($iPublicKey == "" || $iPublicKey == "-") {
-		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub"
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" " sMTADM "@" $2 " cat /etc/ssh/ssh_host_rsa_key.pub"
 		cmdstat = cmd | getline sPublicKey;
 		close(cmd);
 		if (cmdstat <= 0) {
@@ -285,7 +301,7 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 
 	# fetch the lora EUI64
 	if ($iEUI64 == "") {
-		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $2 " mts-io-sysfs show lora/eui"
+		cmd = "sshpass -p" sPASSWD " ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" " sMTADM "@" $2 " mts-io-sysfs show lora/eui"
 		cmdstat = cmd | getline sEUI64;
 		close(cmd);
 		if (cmdstat <= 0) {
@@ -326,15 +342,26 @@ awk 	-v nMCCIinfra="${OPTSTART_INFRA[MCCI]}" \
 	if (optScanOnly == 0 && $iTunnel != "OK" &&
 	    $iUserNum != "" && $iKeepalive != "" &&
 	    $iGatewayID != "" && $iOrgID != "") {
+		# to get a password, we'\''re going to need a script in /tmp to pass to ssh.
+		sGetPassFile = "/tmp/setpass.sh"
 		# create the rev ssh tunnel on the target
 		sshpasspfx = "sshpass -p" sPASSWD " ";
-		sshpfx = sshpasspfx "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" root@" $iIP " ";
+		sshpfx = sshpasspfx "ssh -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" " sMTADM "@" $iIP " ";
+		if (sMTADM != "root") {
+			sshrootpfx = sshpfx "SUDO_ASKPASS=" sGetPassFile " MYPASSWD=\"" sPASSWD "\" sudo -A ";
+		} else {
+			sshrootpfx = sshpfx
+		}
 		scppfx = sshpasspfx "scp -o \"PubkeyAuthentication no\" -o \"CheckHostIP no\" -o \"StrictHostKeyChecking no\" ";
 
 		cmd = ""
-		cmd = cmd scppfx sSETUP_GATEWAY_TUNNEL " root@" $iIP ":/tmp/setup-gateway-tunnel && ";
-		cmd = cmd scppfx sPUBKEY " root@" $iIP ":/tmp/authorized_keys && ";
-		cmd = cmd sshpfx sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" MYPUBKEY=/tmp/authorized_keys sh /tmp/setup-gateway-tunnel",
+		cmd = cmd scppfx sSETUP_GATEWAY_TUNNEL " " sMTADM "@" $iIP ":/tmp/setup-gateway-tunnel && ";
+		if (sMTADM != "root") {
+			cmd = cmd scppfx sSETUP_PASSWD " " sMTADM "@" $iIP ":" sGetPassFile " && "
+			cmd = cmd sshpfx "chmod +x " sGetPassFile " && "
+		}
+		cmd = cmd scppfx sPUBKEY " " sMTADM "@" $iIP ":/tmp/authorized_keys && ";
+		cmd = cmd sshrootpfx sprintf("JUMPHOST=\"%s\" JUMPPORT=22 JUMPUID=%u KEEPALIVE=%u MYNAME=\"%s\" MYPUBKEY=/tmp/authorized_keys sh /tmp/setup-gateway-tunnel",
 				sJhFqdn, $iUserNum, $iKeepalive, $iGatewayID);
 
 		if (optVerbose != 0) {

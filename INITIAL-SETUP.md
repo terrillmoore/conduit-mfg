@@ -14,7 +14,7 @@ Connect to 192.168.2.1 with a web browser. Accept the self-signed cert warning.
 
 ![Login screen](./assets/mpower-initial.png)
 
-Set the default user to `admin`, and use the mLinux default root password.
+Set the default user to `admin`, and use the mLinux 12-26 default root password as the password for `admin`.
 
 Log in. Click through the setup wizard. At the network prompt, just accept the defaults (if it looks like this):
 
@@ -42,7 +42,7 @@ Back on the PC, do the following:
 cd /cygdrive/c/tmp
 mkdir mtcdt
 cd mtcdt
-wget https://github.com/IthacaThings/mlinux-images/raw/master/3.3.24/mtcdt/ttni-base-image-mtcdt-upgrade-withboot.bin
+wget https://ttni.tech/mlinux/images/mtcdt/5.3.0b/ttni-base-image-mtcdt-upgrade.bin
 ```
 
 The above only needs to be done once, to get the required file.
@@ -50,7 +50,7 @@ The above only needs to be done once, to get the required file.
 Then, from the `mtcdt` directory from above:
 
 ```bash
-scp -p ttni-base-image-mtcdt-upgrade-withboot.bin admin@192.168.2.1:/tmp
+scp -p ttni-base-image-mtcdt-upgrade.bin admin@192.168.2.1:/tmp
 ```
 
 The `scp` takes about forty-five seconds.
@@ -58,12 +58,8 @@ The `scp` takes about forty-five seconds.
 Log in again, and apply the firmware:
 
 ```console
-admin@mtcdt:~$ sudo /usr/sbin/mlinux-firmware-upgrade /tmp/ttni-base-image-mtcdt-upgrade-withboot.bin
+admin@mtcdt:~$ sudo /usr/sbin/mlinux-firmware-upgrade /tmp/ttni-base-image-mtcdt-upgrade.bin
 Password:
-firmware_upgrade: Checking MD5 for bstrap.bin...
--: OK
-firmware_upgrade: Checking MD5 for uboot.bin...
--: OK
 firmware_upgrade: Checking MD5 for uImage.bin...
 -: OK
 firmware_upgrade: Checking MD5 for rootfs.jffs2...
@@ -76,39 +72,35 @@ The system is going down for reboot NOW!
 admin@mtcdt:~$
 ```
 
-You'll see lights flashing, then three lights solid, then two lights solid. At the two-light-solid point, the Conduit should be waiting for DHCP; but then it will come up at 192.168.2.1. Login using:
+You'll see lights flashing, then three lights solid, then two lights solid. At the two-light-solid point, the Conduit should be waiting for DHCP; connect it to the provisioning network and find it's IP address.
+
+```console
+$ for i in $(seq 1 255); do   { ( ping -c2 -W1 192.168.1.$i |& grep -q '0 received' || echo 192.168.1.$i > /dev/tty ; ) & disown; }; done >& /dev/null
+...
+$ sudo arp -vn | grep '00:08:00' | tr : - | sort -k1.11n | awk '{ printf("%s\t%s\tTYPE\n", $1, $3) }'
+...
+192.168.1.56	00-08-00-4a-f0-90	TYPE
+```
+
+Login using:
 
 ```bash
-ssh root@192.168.2.1
+ssh mtadm@192.168.1.56
 ```
 
-The password is the mLinux default password.
+The password is the mLinux 5.3.0b default password.
 
-Install the following in `/etc/network/interfaces`:
-
-```
-# The loopback interface
-auto lo
-iface lo inet loopback
-
-# Wired interface
-auto eth0
-iface eth0 inet dhcp
-    post-up ifconfig eth0 mtu 1100
-    udhcpc_opts -b -t 2592000
+Manually install the root ssh key in /root:
 
 ```
-
-I generally put the file (as `interface-dhcp`) in the same directory as my mtcdt image, and then I can simply do the following:
-
-```bash
-scp -p interface-dhcp root@192.168.2.1:/etc/network/interfaces
-```
-
-You can then power the Conduit down and move it to the provisioning network. Because of flash problems in the past, I manually prep the shutdown:
-
-```bash
-sync; sync; sync; sleep 2; shutdown -h now
+$ sudo -i
+Password: 
+# cd ~root
+# mkdir -m 700 .ssh
+# echo '...' > .ssh/authorized_keys
+# chmod 600 .ssh/authorized_keys
+# exit
+$
 ```
 
 Once on the provisioning network, follow the instructions in [`HOWTO-MASS-PROVISION.md`](HOWTO-MASS-PROVISION.md).

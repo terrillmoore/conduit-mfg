@@ -75,7 +75,7 @@
    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt
    ```
 
-9. You'll may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
+9. You may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
 
 10. Run `expand-mfg-gateways.sh` in scan mode, but put info into a file.
 
