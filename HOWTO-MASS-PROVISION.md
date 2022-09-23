@@ -63,7 +63,7 @@
 
    - Set the org to the default org, "Tompkins County" (`-I ttn-ithaca-gateways`).
 
-   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts` and see the next available numbers for infrastructure and personal). Looked like 27 when I wrote this. You'll use this as the argument `-ii#` (`-ii27` in this case).
+   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts | grep 'County #' | ` and see the next available numbers for infrastructure and personal). Looked like 4i when I wrote this. You'll use this as the argument `-ii#` (`-ii27` in this case).
 
    This is not actually critical; just need unique names. You can edit things.
 
@@ -72,7 +72,7 @@
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
    ```shell
-   ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt
+   ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -ii49 ConduitProvisioning.txt
    ```
 
 9. You may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
@@ -80,7 +80,7 @@
 10. Run `expand-mfg-gateways.sh` in scan mode, but put info into a file.
 
     ```shell
-    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitProvisioning.txt > ConduitDB.txt
+    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -mi1 -i49 ConduitProvisioning.txt > ConduitDB.txt
     ```
 
     There should be no error messages and no warnings.
@@ -90,7 +90,7 @@
 12. Run `expand-mfg-gateways.sh` in deploy mode, capturing the output.
 
     ```shell
-    ../../expand-mfg-gateways.sh -I ttn-ithaca -O 'Tompkins County' -mi1 -ii27 ConduitDB.txt > ConduitDB2.txt
+    ../../expand-mfg-gateways.sh -I ttn-ithaca -O 'TTN Ithaca' -mi1 -ii49 ConduitDB.txt > ConduitDB2.txt
     ```
 
 13. If you get `Received disconnect from 54.221.216.139 port 22:2: Too many authentication failures`, you'll need to clear out your ssh-agent. Neither the jumphost nor the gateways can deal with large collections of keys.
@@ -120,8 +120,10 @@
     On each gateway, run:
 
     ```bash
-    opkg update && opkg install python-terminal python-multiprocessing && mkdir /usr/local/lib
+    opkg update && opkg install python-terminal python-multiprocessing && mkdir -p /usr/local/lib
     ```
+
+    (mlinux 5.3.31 doesn't need the opkg, but it doesn't hurt.)
 
     A massive way to do this is something like this, on the jumphost:
 
@@ -185,7 +187,7 @@
 23. Reboot:
 
     ```shell
-    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108b/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -r now'" ;  done
+    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108b/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A jumphost.ttni.tech "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -r now'" ;  done
     ```
 
 24. Wait a minute or two for the reboot, then do a make ping again:
@@ -197,7 +199,7 @@
 25. Shutdown all the hosts.
 
     ```shell
-    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
+    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A jumphost.ttni.tech "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
     ```
 
 26. Commit changes in all the repos you used.

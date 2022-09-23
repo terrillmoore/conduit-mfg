@@ -99,7 +99,7 @@ declare -i OPTVERBOSE=0
 declare -i OPTQUERY=0
 declare -r OPTJHUSER_DEFAULT="$USER"
 OPTJHUSER="$OPTJHUSER_DEFAULT"
-declare -r OPTJHFQDN_DEFAULT="ec2-54-221-216-139.compute-1.amazonaws.com"
+declare -r OPTJHFQDN_DEFAULT="jumphost.ttni.tech"
 OPTJHFQDN="$OPTJHFQDN_DEFAULT"
 declare -i OPTUID=0
 

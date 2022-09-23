@@ -632,7 +632,7 @@ ssh -tA  $JUMPADMIN@$JUMPHOST  ssh -A -p $JUMPUID root@localhost
 For example:
 
 ```console
-# ssh -tA tmm@ec2-54-221-216-139.compute-1.amazonaws.com ssh -A -p 20000 root@localhost
+# ssh -tA tmm@jumphost.ttni.tech ssh -A -p 20000 root@localhost
 Last login: Sun Nov  5 08:39:54 2017 from 192.168.4.6
 root@mtcdt:~#
 ```
@@ -642,7 +642,7 @@ root@mtcdt:~#
 1. To set up for the scripts
 
     ```bash
-    JUMPHOST=ec2-54-221-216-139.compute-1.amazonaws.com
+    JUMPHOST=jumphost.ttni.tech
     JUMPADMIN=your_login
     ```
 

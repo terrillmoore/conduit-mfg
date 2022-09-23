@@ -162,6 +162,6 @@ TARGET=ttn-ithaca-00-08-00-4a-3d-04
 ORG="$(echo $TARGET | sed -e 's/-..-..-..-..-..-..-..-..$//')"
 PORT="$(grep '^ssh_tunnel_remote_port:' "../org-${ORG}-gateways/inventory/host_vars/${TARGET}.yml" | awk '{ print $2 }')"
 echo $PORT
-ssh -A ec2-54-221-216-139.compute-1.amazonaws.com "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'"
+ssh -A jumphost.ttni.tech "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'"
 done
 ```
