@@ -1,5 +1,11 @@
 # Initial Setup for Conduit MTCDT or MTCAP
 
+## Initial provisioning
+
+There are two approaches: with a USB-Ethernet adapter, or with a special command on a Linux machine. Generally, the special command is easier.
+
+### With a USB adapter
+
 Get a USB network adapter.
 
 Set it to static, IP 192.168.2.200
@@ -7,6 +13,14 @@ Set it to static, IP 192.168.2.200
 Connect Conduit and boot up
 
 Wait for flashing status light -- it takes a while.
+
+### Using IP magic on a Linux machine
+
+It's easy enough to dual home the Ethernet adapter on your Linux machine, and with this you can simply set up the machine on your engineering network.
+
+```bash
+sudo ip address add 192.168.2.200/24 dev eth0  # change "eth0" to the right name for your system
+```
 
 ## For mPower Systems (AEP)
 
@@ -20,7 +34,9 @@ Log in. Click through the setup wizard. At the network prompt, just accept the d
 
 ![Network setup](assets/mpower-set-network.png)
 
-Use Administration > Access Configuration > SSH Settings > [x] Enabled, [x] via Lan.  Then "Save and Restart".
+Use Administration > Access Configuration > SSH Settings > [x] Enabled, [x] via Lan.  Then "Save and Restart" (or "Save and Apply" on more receet mLinux).
+
+If you need to reboot:
 
 ![Rebooting after ssh](assets/mpower-enable-ssh-reboot.png)
 
@@ -36,13 +52,13 @@ You will likely have to delete an old host key from your `known_hosts` file.
 
 Confirm that all looks good.
 
-Back on the PC, do the following:
+Back on the PC, do the following. (The following is for Cygwin on a PC, Linux is mutatis mutandis.)
 
 ```bash
 cd /cygdrive/c/tmp
 mkdir mtcdt
 cd mtcdt
-wget https://ttni.tech/mlinux/images/mtcdt/5.3.0b/ttni-base-image-mtcdt-upgrade.bin
+wget https://ttni.tech/mlinux/images/mtcdt/5.3.31/ttni-base-image-mtcdt-upgrade.bin
 ```
 
 The above only needs to be done once, to get the required file.
@@ -53,7 +69,23 @@ Then, from the `mtcdt` directory from above:
 scp -p ttni-base-image-mtcdt-upgrade.bin admin@192.168.2.1:/tmp
 ```
 
-The `scp` takes about forty-five seconds.
+The `scp` takes about thirty seconds.
+
+For cellular gateways, you need to disable the firmware version check:
+
+```console
+admin@mtcdt:~$ sudo vi /etc/init.d/umountfs
+... find the line
+if ! mts_fw_check_hw_support_mp "$mpower_version" "$hw_version; then
+... and change to:
+if false; then
+```
+
+Or if you're brave:
+
+```bash
+sudo sed -i -e '/if.*mts_fw_check_hw_support/s/if.*/if false ; then # &/' /etc/init.d/umountfs
+```
 
 Log in again, and apply the firmware:
 
@@ -72,7 +104,7 @@ The system is going down for reboot NOW!
 admin@mtcdt:~$
 ```
 
-You'll see lights flashing, then three lights solid, then two lights solid. At the two-light-solid point, the Conduit should be waiting for DHCP; connect it to the provisioning network and find it's IP address.
+You'll see lights flashing, then three lights solid, then two lights solid. At the two-light-solid point, the Conduit should be waiting for DHCP; connect it to the provisioning network and find it's IP address.  Use a Linux system for the following.
 
 ```console
 $ for i in $(seq 1 255); do   { ( ping -c2 -W1 192.168.1.$i |& grep -q '0 received' || echo 192.168.1.$i > /dev/tty ; ) & disown; }; done >& /dev/null
@@ -88,19 +120,21 @@ Login using:
 ssh mtadm@192.168.1.56
 ```
 
-The password is the mLinux 5.3.0b default password.
+The password is the mLinux 5.3.0b/5.3.31 default password.
 
-Manually install the root ssh key in /root:
+Manually install the root ssh key in /root. Use the normal conduit public key, tmm-conduit.pub.
 
 ```
 $ sudo -i
 Password: 
 # cd ~root
 # mkdir -m 700 .ssh
-# echo '...' > .ssh/authorized_keys
+# printf '%s\n' '...body of key...' > .ssh/authorized_keys
 # chmod 600 .ssh/authorized_keys
 # exit
 $
 ```
+
+Then confirm that you can ssh in as `root`.
 
 Once on the provisioning network, follow the instructions in [`HOWTO-MASS-PROVISION.md`](HOWTO-MASS-PROVISION.md).
