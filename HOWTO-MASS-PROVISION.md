@@ -63,7 +63,7 @@
 
    - Set the org to the default org, "Tompkins County" (`-I ttn-ithaca-gateways`).
 
-   - find out the next available number for gateways. (`grep 'Tompkins County' ../../../org-ttn-ithaca-gateways/inventory/hosts | grep 'County #' | ` and see the next available numbers for infrastructure and personal). Looked like 4i when I wrote this. You'll use this as the argument `-ii#` (`-ii27` in this case).
+   - find out the next available number for gateways. (`egrep 'Tompkins County|TTN Ithaca' ../../../org-ttn-ithaca-gateways/inventory/hosts | sort -t'#' -k3n`) and see the next available numbers for infrastructure and personal). Looked like 56 when I wrote this. You'll use this as the argument `-ii#` (`-ii56` in this case).
 
    This is not actually critical; just need unique names. You can edit things.
 
@@ -72,7 +72,7 @@
 8. Run `expand-mfg-gateways.sh` in scan mode:
 
    ```shell
-   ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -ii49 ConduitProvisioning.txt
+   ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -ii56 ConduitProvisioning.txt
    ```
 
 9. You may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
@@ -80,7 +80,7 @@
 10. Run `expand-mfg-gateways.sh` in scan mode, but put info into a file.
 
     ```shell
-    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -mi1 -i49 ConduitProvisioning.txt > ConduitDB.txt
+    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -ii56 ConduitProvisioning.txt > ConduitDB.txt
     ```
 
     There should be no error messages and no warnings.
@@ -90,7 +90,7 @@
 12. Run `expand-mfg-gateways.sh` in deploy mode, capturing the output.
 
     ```shell
-    ../../expand-mfg-gateways.sh -I ttn-ithaca -O 'TTN Ithaca' -mi1 -ii49 ConduitDB.txt > ConduitDB2.txt
+    ../../expand-mfg-gateways.sh -I ttn-ithaca -O 'TTN Ithaca' -ii56 ConduitDB.txt > ConduitDB2.txt
     ```
 
 13. If you get `Received disconnect from 54.221.216.139 port 22:2: Too many authentication failures`, you'll need to clear out your ssh-agent. Neither the jumphost nor the gateways can deal with large collections of keys.
@@ -125,11 +125,12 @@
 
     (mlinux 5.3.31 doesn't need the opkg, but it doesn't hurt.)
 
-    A massive way to do this is something like this, on the jumphost:
+    A massive way to do this is something like this. This is done locally,
+    while you can access the devices via the local network.
 
     ```bash
     export GWS=$(tail -n+2 ConduitDB.txt | cut -f2)
-    for i in $GWS ; do ssh -p $i root@localhost 'opkg update && opkg install python-terminal python-multiprocessing && mkdir -p /usr/local/lib' ; done
+    for i in $GWS ; do ssh root@$i 'opkg update && opkg install python-terminal python-multiprocessing && mkdir -p /usr/local/lib' ; done
     ```
 
 17. Do a dry run of `create-ansible-mfg-gateways` for each of your target organizations, using a suitable input pattern.
@@ -148,6 +149,8 @@
 
     If it says "`File exists ../../../org-ttn-nyc-gateways/inventory/hosts_new`", you have a leftover file. Move it out of the way.
 
+    If it says "`File exists: ../../../org-ttn-ithaca-gateways/inventory/host_vars/ttn-ithaca-00-08-00-xx-xx-xx.yaml`", then the gateway is already in the database; you should remove it from the `ConduitDB.txt` file.
+
 18. Write the host files.
 
     ```shell
@@ -157,7 +160,7 @@
 
 19. Edit the `hosts` file(s) to merge in the `hosts_new` info.
 
-20. Get the list of hosts to be provisioned into a variable:
+20. Get the list of hosts to be provisioned into a variable, for example:
 
     ```shell
     NEWHOSTS="$(sed -ne '1,/^\[test/d' -e 's/^\([^ \t][^ \t]*\).*$/\1/p' ../../../org-ttn-ithaca-gateways/inventory/hosts_new)"
@@ -172,9 +175,29 @@
 22. Make sure `ttn-lw-cli` is set up:
 
     ```bash
+    # if ttn-lw-cli is not installed:
     sudo snap install --classic ttn-lw-stack
     sudo snap alias ttn-lw-stack.ttn-lw-cli ttn-lw-cli
+    # set up path to config file.
     export TTN_LW_CONFIG=$(realpath ./ttn-lw-cli.yml)
+    ```
+    See if you're already logged in:
+
+    ```console
+    $ ttn-lw-cli user get ohjsjuju
+    {
+    "ids": {
+        "user_id": "ohjsjuju"
+    },
+    "created_at": "2021-07-13T04:31:42.869Z",
+    "updated_at": "2021-07-13T04:31:42.869Z"
+    }
+    $
+    ```
+
+    If you don't get the data, login using:
+
+    ```bash
     ttn-lw-cli login --callback
     ```
 

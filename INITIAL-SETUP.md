@@ -122,9 +122,9 @@ ssh mtadm@192.168.1.56
 
 The password is the mLinux 5.3.0b/5.3.31 default password.
 
-Manually install the root ssh key in /root. Use the normal conduit public key, tmm-conduit.pub.
+Manually install the root ssh key in /root. Use the normal conduit public key, `tmm-conduit.pub`.
 
-```
+```console
 $ sudo -i
 Password: 
 # cd ~root
@@ -135,6 +135,6 @@ Password:
 $
 ```
 
-Then confirm that you can ssh in as `root`.
+Then confirm that you can ssh in as `root` without using a password.
 
 Once on the provisioning network, follow the instructions in [`HOWTO-MASS-PROVISION.md`](HOWTO-MASS-PROVISION.md).
