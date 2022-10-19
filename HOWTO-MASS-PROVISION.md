@@ -49,6 +49,14 @@
    mts-io-sysfs show product-id
    ```
 
+   However, this won't be exactly right. You should set as follows:
+
+   Standard name | Use for:
+   --------------|---------------
+   Conduit 210L  | MTCDT-210L, MTCDT-210A
+   Conduit 246L  | MTCDT-246L, MTCDT-246A
+   Conduit AP    | MTCAP, {probably some other code for the cellular AP}
+
 6. Sort this by mac address:
 
    ```shell
@@ -222,7 +230,7 @@
 25. Shutdown all the hosts.
 
     ```shell
-    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108a/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A jumphost.ttni.tech "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
+    for i in $NEWHOSTS ; do PORT=$(grep "$i" ../conduit-mfg/mfg/systems-20190108b/ConduitDB.txt | cut -f 8) ; echo $PORT ; ssh -A jumphost.ttni.tech "ssh -p $PORT -o StrictHostKeyChecking=no root@localhost 'shutdown -h now'" ;  done
     ```
 
 26. Commit changes in all the repos you used.

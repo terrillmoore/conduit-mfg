@@ -142,11 +142,6 @@ eth0_type: dhcp
 # For (very insecure) WEP and plain text
 #wireless_keys: { ssid: 'MYNETWORKNAME', psk: 'TotallyInsecure', key_mgmt: 'NONE' }
 
-# To upgrade to a specific version of mLinux, specify it here.
-# It's best to do this when you are on the same network, or have
-# serial console access to the gateway
-# mlinux_version: 3.3.13
-
 # Descriptive location of the gateway
 description: '${GatewayName}'
 
@@ -155,11 +150,9 @@ latitude: 0
 longitude: 0
 altitude: -1
 
-#
-# use the V3 file for SPI based forwarding.
-#
-forwarder_variant: mp
-forwarder_version: 3.0.20-r1
+# Gateway owner (for v3): must be current user, or an organization for
+# which the current user has access rights
+# gateway_owner: "username" or "--organization-id orgid"
 
 # the complete list of collaborators including the owner
 gateway_collaborators:
@@ -167,7 +160,8 @@ gateway_collaborators:
   - { username: jchonig }
   - { username: terrillmoore }
   - { username: "cvb-mcci" }
-#  - { username: etsarnas }
+  - { username: sjpark }
+  # - { organization: OWNER from above }
 
 # add the owner's or local admin's SSH public key here.
 #authorized_keys:
