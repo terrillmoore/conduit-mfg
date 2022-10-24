@@ -20,7 +20,7 @@
       sudo arp -vn | grep '00:08:00' | tr : - | sort -k1.11n | awk '{ printf("%s\t%s\tTYPE\n", $1, $3) }'
       ```
 
-   d. Save results for step 4.
+   d. Review results and make sure all expected gateways are present.
 
 3. Create a directory:  `mfg/systems-`{date}.
 
@@ -31,7 +31,7 @@
    { printf "Device Type\tClient IP address\tClients MAC Address\n" ; sudo arp -vn | grep '00:08:00' | tr : - | sort -k3 | awk '{ printf("TYPE\t%s\t%s\n", $1, $3) }' ; } > ConduitProvisioning.txt
    ```
 
-5. Fill in the data, **separated by tabs**. Device types are "Conduit 210L", "Conduit 246L", "Conduit AP", e.g.:
+5. Fill in the data, **separated by tabs**. Device types are "Conduit 210L", "Conduit 246L", "246L-L4N1", "Conduit AP", "Conduit AP-LNA3-915" e.g.:
 
    ```provisioning
    Device Type	Client IP address	Clients MAC Address
@@ -54,8 +54,8 @@
    Standard name | Use for:
    --------------|---------------
    Conduit 210L  | MTCDT-210L, MTCDT-210A
-   Conduit 246L  | MTCDT-246L, MTCDT-246A
-   Conduit AP    | MTCAP, {probably some other code for the cellular AP}
+   Conduit 246L  | MTCDT-246L, MTCDT-246A, MTCDT-246L-L4N1
+   Conduit AP    | MTCAP, MTCAP-LNA3-915-041A
 
 6. Sort this by mac address:
 
@@ -73,6 +73,8 @@
 
    - find out the next available number for gateways. (`egrep 'Tompkins County|TTN Ithaca' ../../../org-ttn-ithaca-gateways/inventory/hosts | sort -t'#' -k3n`) and see the next available numbers for infrastructure and personal). Looked like 56 when I wrote this. You'll use this as the argument `-ii#` (`-ii56` in this case).
 
+   For multi-gateway deployments for WeRadiate and Cornell, we search for 'WeRadiate' or 'Cornell' above.
+
    This is not actually critical; just need unique names. You can edit things.
 
    You may need to install `sshpass` (using `sudo apt install sshpass`).
@@ -82,6 +84,8 @@
    ```shell
    ../../expand-mfg-gateways.sh -s -I ttn-ithaca -O 'TTN Ithaca' -ii56 ConduitProvisioning.txt
    ```
+
+   You'll be prompted for the root password for the gateways. All the gateways must have the same root password at this point.
 
 9. You may get some errors from `known_hosts`.  Fix things until that's resolved. If someone has reset the root password, you'll need to set the password manually to the value in the script.
 
@@ -115,7 +119,7 @@
     jumphost-tools/live-gateways
     ```
 
-    Make sure the new gateways are in the list.
+    Make sure the new gateways are in the list. (Note that `kick-all-gateways` might not work, since the gateways are still not fully set up.)
 
 15. Rename the new database on top of the old database.
 

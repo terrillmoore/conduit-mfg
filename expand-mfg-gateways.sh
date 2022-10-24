@@ -200,7 +200,7 @@ if [[ "$OPTPASSWD" = "-" ]]; then
 	read -r -s -p "Conduit password: " OPTPASSWD || _error "Couldn't get password"
 else
 	PASSWD_FILE="$OPTPASSWD"
-	read -r -s -p "Conduit password: " OPTPASSWD < "$PASSWD_FILE" || _error "Couln't get password from $PASSWD_FILE"
+	read -r -s -p "Conduit password (from $PASSWD_FILE): " OPTPASSWD < "$PASSWD_FILE" || _error "Couln't get password from $PASSWD_FILE"
 fi
 
 ### do the work ###
