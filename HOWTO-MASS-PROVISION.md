@@ -1,8 +1,20 @@
 # How To Mass Provision
 
+<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD004 -->
+<!-- don't complain about starting bulleted list with '*' -->
+<!-- markdownlint-capture -->
+<!-- markdownlint-disable -->
+<!-- TOC depthfrom:2 updateonsave:true -->
+
+
+<!-- /TOC -->
+<!-- markdownlint-restore -->
+<!-- Due to a bug in Markdown TOC, the table is formatted incorrectly if tab indentation is set other than 4. Due to another bug, this comment must be *after* the TOC entry. -->
+
 1. go to the router, and download a list of mac address => IP address mappings. You may need to reboot the router if there's a huge list. (We may also need to switch to a PI-based router for this.)
 
-2. If the router is not able to deal,
+2. If the router is not able to give you that list,
 
    a. Connect the Linux system to the 192.168.1 network
 
