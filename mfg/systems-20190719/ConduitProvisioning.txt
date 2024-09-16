@@ -1,0 +1,3 @@
+Device Type	Client IP address	Clients MAC Address
+Conduit 210L	172.25.29.226	00-08-00-4a-15-fa
+
